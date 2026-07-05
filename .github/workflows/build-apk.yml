@@ -24,6 +24,28 @@ jobs:
       - name: Copy web assets
         run: npx cap copy android
 
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Replace app icon with our icon (all densities)
+        run: |
+          SRC=www/icons/icon-512.png
+          declare -A SIZES=( [mdpi]=48 [hdpi]=72 [xhdpi]=96 [xxhdpi]=144 [xxxhdpi]=192 )
+          for density in "${!SIZES[@]}"; do
+            size=${SIZES[$density]}
+            dir=android/app/src/main/res/mipmap-$density
+            mkdir -p "$dir"
+            convert "$SRC" -resize ${size}x${size} "$dir/ic_launcher.png"
+            convert "$SRC" -resize ${size}x${size} "$dir/ic_launcher_round.png"
+            convert "$SRC" -resize ${size}x${size} "$dir/ic_launcher_foreground.png"
+          done
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+
+      - name: Inject immersive-mode MainActivity
+        run: |
+          mkdir -p android/app/src/main/java/com/notesapp/offline
+          cp MainActivity.java android/app/src/main/java/com/notesapp/offline/MainActivity.java
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
