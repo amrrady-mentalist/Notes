@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Notes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-void:#000000;
+  --blob-violet:#8b7cff;
+  --blob-rose:#ff7aa2;
+  --blob-teal:#4fe8c4;
+  --blob-amber:#ffc35a;
+  --glass-fill:rgba(255,255,255,0.07);
+  --glass-fill-strong:rgba(255,255,255,0.12);
+  --glass-border:rgba(255,255,255,0.20);
+  --glass-highlight:rgba(255,255,255,0.45);
+  --text-primary:rgba(255,255,255,0.94);
+  --text-secondary:rgba(255,255,255,0.56);
+  --text-tertiary:rgba(255,255,255,0.34);
+  --accent-a:#8b7cff;
+  --accent-b:#4fe8c4;
+  --danger:#ff6b6b;
+  --radius-lg:28px;
+  --radius-md:20px;
+  --radius-sm:14px;
+}
+body.light{
+  --bg-void:#ffffff;
+  --glass-fill:rgba(0,0,0,0.04);
+  --glass-fill-strong:rgba(0,0,0,0.075);
+  --glass-border:rgba(0,0,0,0.10);
+  --glass-highlight:rgba(255,255,255,0.7);
+  --text-primary:rgba(0,0,0,0.88);
+  --text-secondary:rgba(0,0,0,0.52);
+  --text-tertiary:rgba(0,0,0,0.32);
+}
+body.light .glass{
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.8),
+    inset 0 -1px 0 rgba(0,0,0,0.04),
+    0 8px 28px rgba(0,0,0,0.08);
+}
+body.light .glass::before{
+  background:linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 40%);
+}
+body.light #drawCanvas{box-shadow:0 10px 40px rgba(0,0,0,0.15);}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%; background:#000;}
+body{
+  margin:0;
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg-void);
+  color:var(--text-primary);
+  overflow:hidden;
+  overscroll-behavior:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+input, textarea, [contenteditable]{-webkit-user-select:text; user-select:text;}
+
+#app{position:relative; z-index:1; height:100%; display:flex; flex-direction:column;}
+
+/* ---------- glass base ---------- */
+.glass{
+  background:var(--glass-fill);
+  backdrop-filter:blur(26px) saturate(180%);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    inset 0 -1px 0 rgba(0,0,0,0.15),
+    0 8px 32px rgba(0,0,0,0.35);
+  position:relative;
+}
+.glass::before{
+  content:'';
+  position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 40%);
+}
+
+/* ---------- header ---------- */
+header{
+  flex:0 0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 10px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.title-row{display:flex; align-items:center; justify-content:space-between;}
+h1{
+  font-family:'Manrope',sans-serif; font-weight:800; font-size:34px; margin:0;
+  letter-spacing:-0.5px;
+}
+.avatar{
+  width:40px; height:40px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-primary); cursor:pointer;
+}
+.avatar:active{transform:scale(0.92);}
+.search-bar{
+  display:flex; align-items:center; gap:8px;
+  border-radius:var(--radius-md); padding:10px 14px;
+}
+.search-bar svg{flex:0 0 auto; opacity:0.5;}
+.search-bar input{
+  flex:1; background:none; border:none; outline:none; color:var(--text-primary);
+  font-size:15px; font-family:'Inter';
+}
+.search-bar input::placeholder{color:var(--text-tertiary);}
+
+.chips{display:flex; gap:8px; overflow-x:auto; padding:2px 0 6px; scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{
+  flex:0 0 auto; padding:8px 16px; border-radius:100px; font-size:13px; font-weight:600;
+  color:var(--text-secondary); white-space:nowrap; cursor:pointer;
+  transition:color .2s;
+}
+.chip.active{color:var(--text-primary); background:var(--glass-fill-strong);}
+
+/* ---------- notes grid ---------- */
+main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + env(safe-area-inset-bottom,0px));}
+.tab-content{will-change:transform;}
+.grid{
+  column-count:2; column-gap:12px;
+}
+@media(min-width:520px){.grid{column-count:3;}}
+.card{
+  break-inside:avoid; margin-bottom:12px; border-radius:var(--radius-md);
+  padding:14px; cursor:pointer; transition:transform .15s ease;
+}
+.card:active{transform:scale(0.97);}
+.card .tag-dot{width:9px; height:9px; border-radius:50%; display:inline-block; margin-bottom:8px;}
+.card .thumb{width:100%; border-radius:12px; margin-bottom:8px; display:block; background:#fff;}
+.card h3{font-family:'Manrope'; font-size:15px; font-weight:700; margin:0 0 6px; line-height:1.3;}
+.card p{font-size:13px; color:var(--text-secondary); margin:0; line-height:1.4;
+  display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;}
+.card .meta{display:flex; align-items:center; justify-content:space-between; margin-top:10px;}
+.card .meta time{font-family:'IBM Plex Mono'; font-size:10px; color:var(--text-tertiary); letter-spacing:0.02em;}
+.card .pin{opacity:0.8;}
+.card .checklist-preview{list-style:none; margin:0; padding:0; font-size:13px; color:var(--text-secondary);}
+.card .checklist-preview li{display:flex; gap:6px; align-items:flex-start; margin-bottom:4px;}
+.card .checklist-preview li .box{width:13px; height:13px; border-radius:4px; border:1.5px solid var(--text-tertiary); flex:0 0 auto; margin-top:1px;}
+.card .checklist-preview li.done{opacity:0.45; text-decoration:line-through;}
+.card .checklist-preview li.done .box{background:var(--accent-b); border-color:var(--accent-b);}
+
+.empty-state{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:80px 30px; text-align:center; color:var(--text-tertiary); gap:10px;
+}
+.empty-state svg{opacity:0.5; margin-bottom:6px;}
+.empty-state h3{font-family:'Manrope'; color:var(--text-secondary); font-size:17px; margin:0;}
+.empty-state p{font-size:13px; margin:0; max-width:220px;}
+
+/* ---------- dock / FABs ---------- */
+.dock-wrap{
+  position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  z-index:20; display:flex; flex-direction:column; align-items:center; gap:14px;
+}
+.fab{
+  width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; border:1px solid var(--glass-border);
+}
+.fab.main{
+  background:linear-gradient(135deg,var(--accent-a),var(--accent-b));
+  box-shadow:0 10px 30px rgba(139,124,255,0.45), inset 0 1px 0 rgba(255,255,255,0.5);
+}
+.fab.secondary{width:46px; height:46px;}
+.fab:active{transform:scale(0.92);}
+.fab svg{width:24px; height:24px;}
+
+/* bottom sort/filter bar (small pill) */
+.toolbar-pill{
+  position:fixed; left:18px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:20;
+  border-radius:100px; padding:10px 16px; display:flex; align-items:center; gap:8px;
+  font-size:13px; font-weight:600; color:var(--text-secondary); cursor:pointer;
+}
+
+/* ---------- editor ---------- */
+.editor{
+  position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+  background:var(--bg-void);
+  transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.72,0,1);
+}
+.editor.open{transform:translateY(0);}
+.editor-top{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 10px; gap:8px;
+}
+.icon-btn{
+  width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text-primary);
+}
+.icon-btn:active{transform:scale(0.9);}
+.editor-top .right-actions{display:flex; gap:8px;}
+.editor-body{flex:1; overflow-y:auto; padding:6px 20px 40px;}
+.title-input{
+  width:100%; background:none; border:none; outline:none; color:var(--text-primary);
+  font-family:'Manrope'; font-weight:800; font-size:26px; margin-bottom:10px; letter-spacing:-0.3px;
+}
+.title-input::placeholder{color:var(--text-tertiary);}
+.content-editable{
+  width:100%; min-height:40vh; background:none; border:none; outline:none;
+  color:var(--text-primary); font-size:16px; line-height:1.6; font-family:'Inter';
+}
+.content-editable ul.checklist{list-style:none; padding:0; margin:6px 0;}
+.content-editable ul.checklist li{display:flex; align-items:flex-start; gap:8px; margin-bottom:6px; cursor:pointer;}
+.content-editable ul.checklist li .cbox{
+  width:18px; height:18px; border-radius:6px; border:1.5px solid var(--text-tertiary); flex:0 0 auto; margin-top:2px;
+}
+.content-editable ul.checklist li.done{opacity:0.5; text-decoration:line-through;}
+.content-editable ul.checklist li.done .cbox{background:linear-gradient(135deg,var(--accent-a),var(--accent-b)); border-color:transparent;}
+.drawing-thumb-wrap{margin-bottom:14px; border-radius:16px; overflow:hidden; cursor:pointer; position:relative;}
+.drawing-thumb-wrap img{width:100%; display:block; background:#fff;}
+.drawing-thumb-wrap .edit-badge{
+  position:absolute; top:8px; right:8px; padding:5px 10px; border-radius:100px; font-size:11px; font-weight:600;
+  background:rgba(0,0,0,0.62); color:#fff; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,0.15);
+}
+
+/* editor bottom format bar */
+.format-bar{
+  flex:0 0 auto; display:flex; align-items:center; gap:4px;
+  margin:0 14px calc(14px + env(safe-area-inset-bottom,0px));
+  padding:8px 10px; border-radius:26px;
+  overflow-x:auto; scrollbar-width:none;
+}
+.format-bar::-webkit-scrollbar{display:none;}
+.fmt-btn{
+  flex:0 0 auto; width:42px; height:42px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text-primary);
+}
+.fmt-btn:active{transform:scale(0.9);}
+.fmt-btn.active{background:var(--glass-fill-strong); color:var(--accent-b);}
+
+/* color swatch row */
+.swatch-row{display:flex; gap:10px; padding:12px 4px; align-items:center;}
+.swatch{width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid transparent;}
+.swatch.selected{border-color:#fff;}
+
+/* context menu popover */
+.popover{
+  position:fixed; z-index:60; border-radius:var(--radius-md); padding:8px; min-width:190px;
+  opacity:0; transform:scale(0.9) translateY(6px); transform-origin:top right; pointer-events:none;
+  transition:opacity .18s, transform .18s;
+  background:rgba(22,22,26,0.88) !important;
+  color:rgba(255,255,255,0.94);
+}
+body.light .popover{
+  background:rgba(255,255,255,0.92) !important;
+  color:rgba(0,0,0,0.88);
+}
+.popover.open{opacity:1; transform:scale(1) translateY(0); pointer-events:auto;}
+.pop-item{display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:12px; font-size:14px; cursor:pointer;}
+.pop-item:active{background:var(--glass-fill-strong);}
+.pop-item.danger{color:var(--danger);}
+.pop-swatches{display:flex; gap:8px; padding:8px 12px;}
+
+.scrim{
+  position:fixed; inset:0; z-index:45; background:rgba(0,0,0,0.35); opacity:0; pointer-events:none; transition:opacity .18s;
+}
+.scrim.open{opacity:1; pointer-events:auto;}
+.popover-scrim{
+  position:fixed; inset:0; z-index:58; background:transparent; pointer-events:none;
+}
+.popover-scrim.open{pointer-events:auto;}
+
+/* ---------- drawing overlay ---------- */
+.draw-overlay{
+  position:fixed; inset:0; z-index:90; display:flex; flex-direction:column;
+  background:var(--bg-void); transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1);
+}
+.draw-overlay.open{transform:translateY(0);}
+.draw-top{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;
+}
+.draw-top .label{font-family:'Manrope'; font-weight:700; font-size:15px; color:var(--text-secondary);}
+.draw-canvas-wrap{flex:1; padding:0 12px; display:flex; align-items:center; justify-content:center;}
+#drawCanvas{
+  width:100%; height:100%; border-radius:20px; background:#fff; touch-action:none;
+  box-shadow:0 10px 40px rgba(0,0,0,0.4);
+}
+.draw-tools{
+  flex:0 0 auto; margin:0 14px calc(14px + env(safe-area-inset-bottom,0px));
+  padding:12px 14px; border-radius:26px;
+}
+.draw-tools-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.draw-color{width:30px; height:30px; border-radius:50%; cursor:pointer; border:2px solid transparent; flex:0 0 auto;}
+.draw-color.selected{border-color:#fff; transform:scale(1.1);}
+.draw-actions{display:flex; gap:8px; margin-left:auto;}
+input[type=range]{flex:1; accent-color:var(--accent-b);}
+.size-preview{width:14px; height:14px; border-radius:50%; background:#fff; flex:0 0 auto;}
+
+.btn-pill{
+  padding:9px 16px; border-radius:100px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid var(--glass-border);
+}
+.btn-pill.primary{background:linear-gradient(135deg,var(--accent-a),var(--accent-b)); color:#0a0a12; border:none;}
+
+::selection{background:rgba(139,124,255,0.4);}
+
+/* ---------- hidden magic settings ---------- */
+.magic-panel{
+  position:fixed; inset:0; z-index:80; display:flex; flex-direction:column;
+  background:var(--bg-void); transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.72,0,1);
+}
+.magic-panel.open{transform:translateY(0);}
+.magic-panel h1{font-size:20px;}
+.magic-hint{padding:0 20px 14px; color:var(--text-tertiary); font-size:13px; line-height:1.5;}
+.magic-body{flex:1; overflow-y:auto; padding:6px 18px 100px;}
+.magic-effect-card{margin-bottom:12px;}
+.magic-effect-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.active-pill{
+  font-family:'IBM Plex Mono'; font-size:10px; letter-spacing:0.06em; font-weight:600;
+  color:var(--accent-b); border:1px solid var(--accent-b); border-radius:100px; padding:3px 9px;
+  flex:0 0 auto;
+}
+.magic-empty{color:var(--text-tertiary); font-size:14px; text-align:center; padding:60px 20px;}
+.magic-fab{position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:81;}
+
+/* lock screen background upload */
+.lockbg-section{padding:0 20px 18px; flex:0 0 auto;}
+.lockbg-row{display:flex; align-items:center; gap:14px;}
+.lockbg-thumb{
+  width:64px; height:64px; border-radius:16px; overflow:hidden; flex:0 0 auto;
+  background:var(--glass-fill); border:1px solid var(--glass-border);
+  display:flex; align-items:center; justify-content:center; color:var(--text-tertiary);
+}
+.lockbg-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+.lockbg-actions{display:flex; gap:8px; flex-wrap:wrap;}
+.lockbg-actions .btn-pill:active{background:var(--glass-fill-strong);}
+#lockBgRemoveBtn{color:var(--danger); display:none;}
+#lockBgRemoveBtn.show{display:inline-block;}
+
+/* effect editor */
+#effectEditor{z-index:85;}
+.effect-name-input{
+  width:100%; background:none; border:none; outline:none; color:var(--text-primary);
+  font-family:'Manrope'; font-weight:800; font-size:22px; margin-bottom:14px; letter-spacing:-0.3px;
+}
+.effect-name-input::placeholder{color:var(--text-tertiary);}
+.effect-active-btn{display:inline-block; margin-bottom:18px;}
+.effect-active-btn.is-active{color:var(--accent-b); border-color:var(--accent-b);}
+.effect-title-input{
+  width:100%; background:var(--glass-fill); border:1px solid var(--glass-border); border-radius:var(--radius-sm);
+  outline:none; color:var(--text-primary); font-family:'Inter'; font-weight:600; font-size:15px; padding:12px 14px;
+  margin-bottom:16px; display:block;
+}
+.effect-title-input::placeholder{color:var(--text-tertiary);}
+.effect-body-input{
+  width:100%; min-height:110px; background:var(--glass-fill); border:1px solid var(--glass-border); border-radius:var(--radius-sm);
+  outline:none; color:var(--text-primary); font-size:15px; line-height:1.6; font-family:'Inter'; padding:12px 14px; resize:vertical;
+  margin-bottom:8px; display:block;
+}
+.effect-body-input::placeholder{color:var(--text-tertiary);}
+.effect-body-hint{color:var(--text-tertiary); font-size:12px; margin:0 0 24px; line-height:1.5;}
+.outs-label{font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;}
+.out-row{margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--glass-border);}
+.out-row:last-child{border-bottom:none;}
+.out-row-fields{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+.out-code{
+  width:62px; flex:0 0 auto; background:var(--glass-fill); border:1px solid var(--glass-border); border-radius:var(--radius-sm);
+  outline:none; color:var(--text-primary); font-family:'IBM Plex Mono'; font-size:14px; padding:10px 4px; text-align:center;
+}
+.out-word{
+  flex:1; min-width:0; background:var(--glass-fill); border:1px solid var(--glass-border); border-radius:var(--radius-sm);
+  outline:none; color:var(--text-primary); font-size:14px; padding:10px 12px;
+}
+.out-arrow{color:var(--text-tertiary); font-size:13px; flex:0 0 auto;}
+.out-remove{
+  flex:0 0 auto; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  color:var(--danger); font-size:18px; cursor:pointer;
+}
+.out-remove:active{background:var(--glass-fill-strong);}
+.out-sketch-row{display:flex; align-items:center; gap:10px;}
+.out-sketch-thumb{
+  width:38px; height:38px; border-radius:10px; overflow:hidden; flex:0 0 auto;
+  background:var(--glass-fill); border:1px solid var(--glass-border);
+  display:flex; align-items:center; justify-content:center; color:var(--text-tertiary);
+}
+.out-sketch-thumb img{width:100%; height:100%; object-fit:cover; display:block; background:#fff;}
+.out-sketch-btn{font-size:12px; font-weight:600; color:var(--accent-b); cursor:pointer;}
+.out-sketch-btn:active{opacity:0.6;}
+.out-sketch-clear{font-size:12px; color:var(--danger); cursor:pointer; margin-left:auto;}
+.out-sketch-clear:active{opacity:0.6;}
+
+/* ---------- magic lock flow: blackout / ambient clock / pin ---------- */
+#lockFlow{position:fixed; inset:0; z-index:500; background:#000; display:none;}
+#lockFlow.open{display:block;}
+.lock-screen{position:absolute; inset:0; display:none; flex-direction:column; align-items:center; -webkit-user-select:none; user-select:none;}
+.lock-screen.active{display:flex;}
+#blackoutScreen{background:#000;}
+#ambientScreen{
+  justify-content:center; padding-bottom:16vh;
+  background:radial-gradient(circle at 50% 25%, rgba(139,124,255,0.12), transparent 60%), #000;
+}
+.ambient-time{
+  font-family:'Bebas Neue','Manrope',sans-serif; font-weight:400;
+  font-size:104px; letter-spacing:3px; line-height:0.9; color:rgba(255,255,255,0.95);
+}
+.ambient-date{font-family:'Inter',sans-serif; font-size:15px; color:rgba(255,255,255,0.48); margin-top:12px;}
+.ambient-hint{
+  position:absolute; bottom:calc(40px + env(safe-area-inset-bottom,0px));
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  color:rgba(255,255,255,0.42); font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+}
+@keyframes swipeUpHint{0%,100%{transform:translateY(0); opacity:0.35;} 50%{transform:translateY(-8px); opacity:0.85;}}
+.ambient-hint svg{animation:swipeUpHint 1.7s ease-in-out infinite;}
+
+#pinScreen{
+  justify-content:flex-start; padding-top:calc(env(safe-area-inset-top,0px) + 130px);
+  background:
+    radial-gradient(ellipse 150% 60% at 50% 132%, rgba(120,235,210,0.55), transparent 60%),
+    radial-gradient(ellipse 130% 45% at 50% 122%, rgba(79,200,180,0.35), transparent 62%),
+    radial-gradient(ellipse 110% 30% at 50% 108%, rgba(60,160,150,0.18), transparent 65%),
+    #000;
+}
+.pin-lock-icon{margin-bottom:14px; color:rgba(255,255,255,0.92);}
+.pin-abort-zone{display:flex; flex-direction:column; align-items:center;}
+.pin-label{font-family:'Inter',sans-serif; font-size:20px; font-weight:400; color:rgba(255,255,255,0.95); margin-bottom:20px;}
+.pin-dots{display:flex; gap:18px; margin-bottom:64px; min-height:14px; flex-wrap:wrap; justify-content:center; max-width:240px;}
+.pin-dot{
+  width:13px; height:13px; border-radius:50%;
+  background:rgba(255,255,255,0.28);
+  transition:background .15s ease, box-shadow .15s ease;
+}
+.pin-dot.filled{
+  background:rgba(255,255,255,0.98);
+  box-shadow:0 0 10px 2px rgba(255,255,255,0.75), 0 0 22px 6px rgba(255,255,255,0.35);
+}
+.pin-keypad{display:grid; grid-template-columns:repeat(3, 68px); gap:18px 26px; justify-content:center;}
+.pin-key{
+  width:68px; height:68px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Inter',sans-serif; font-weight:400; font-size:28px; color:rgba(255,255,255,0.95);
+  background:rgba(255,255,255,0.10);
+  backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border:none;
+  box-shadow:none;
+  position:relative; overflow:hidden; cursor:pointer;
+}
+.pin-key::before{display:none;}
+.pin-key:active{transform:scale(0.94); background:rgba(255,255,255,0.18);}
+.pin-key.empty{background:none; pointer-events:none;}
+.pin-key.delete{
+  width:auto; height:68px; border-radius:0; background:none;
+  font-family:'Inter',sans-serif; font-weight:400; font-size:16px; color:rgba(255,255,255,0.92);
+}
+.pin-key.delete:active{transform:none; background:none; opacity:0.6;}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="title-row">
+      <h1 id="pageTitle">Notes</h1>
+      <div class="avatar glass" id="themeToggle">
+        <svg id="themeIconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.5A9 9 0 1111.5 3 7 7 0 0021 12.5z"/></svg>
+        <svg id="themeIconSun" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
+      </div>
+    </div>
+    <div class="search-bar glass">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" placeholder="Search notes">
+    </div>
+    <div class="chips" id="chipRow"></div>
+  </header>
+
+  <main>
+    <div class="tab-content" id="tabContent">
+      <div class="grid" id="grid"></div>
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2h6l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M9 22V12h6v10"/></svg>
+        <h3>No notes yet</h3>
+        <p>Tap the + button to write your first note, or the pencil to start drawing.</p>
+      </div>
+    </div>
+  </main>
+
+  <div class="toolbar-pill glass" id="sortBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+    <span id="sortLabel">Recent</span>
+  </div>
+
+  <div class="dock-wrap">
+    <div class="fab secondary glass" id="fabDraw">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+    </div>
+    <div class="fab main" id="fabNew">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0a0a12" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- editor -->
+<div class="scrim" id="scrim"></div>
+<div class="popover-scrim" id="popoverScrim"></div>
+<div class="editor" id="editor">
+  <div class="editor-top">
+    <div class="icon-btn glass" id="editorBack">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="right-actions">
+      <div class="icon-btn glass" id="editorPin">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.5 5.5L19 9l-4 4 1 6-4-3-4 3 1-6-4-4 5.5-1.5z"/></svg>
+      </div>
+      <div class="icon-btn glass" id="editorMore">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+      </div>
+    </div>
+  </div>
+  <div class="editor-body">
+    <div id="drawingSlot"></div>
+    <input class="title-input" id="titleInput" placeholder="Title">
+    <div class="content-editable" id="contentEditable" contenteditable="true" data-placeholder="Start writing..."></div>
+  </div>
+  <div class="format-bar glass">
+    <div class="fmt-btn" data-cmd="bold"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 4h6a3.5 3.5 0 010 7H6zM6 11h7a3.5 3.5 0 010 7H6z"/></svg></div>
+    <div class="fmt-btn" data-cmd="italic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4h6M5 20h6M13 4L9 20"/></svg></div>
+    <div class="fmt-btn" data-cmd="underline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 4v7a6 6 0 0012 0V4M4 21h16"/></svg></div>
+    <div class="fmt-btn" data-cmd="bullet"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="4" cy="6" r="1.3" fill="currentColor"/><circle cx="4" cy="12" r="1.3" fill="currentColor"/><circle cx="4" cy="18" r="1.3" fill="currentColor"/><path d="M9 6h11M9 12h11M9 18h11"/></svg></div>
+    <div class="fmt-btn" data-cmd="checklist"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h4M4 12h4M4 18h4"/><path d="M9 6h11M9 12h11M9 18h11" opacity="0.5"/></svg></div>
+    <div class="fmt-btn" id="fmtDraw"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg></div>
+  </div>
+</div>
+
+<!-- context / more popover -->
+<div class="popover glass" id="morePopover">
+  <div class="pop-item" data-act="pin">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.5 5.5L19 9l-4 3.5L16 18l-4-3-4 3 1-5.5-4-3.5 5.5-1.5z"/></svg>
+    <span id="pinLabel">Pin</span>
+  </div>
+  <div class="pop-item" data-act="archive">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 001 1h12a1 1 0 001-1V8M10 13h4"/></svg>
+    <span id="archiveLabel">Archive</span>
+  </div>
+  <div class="pop-swatches" id="popSwatches"></div>
+  <div class="pop-item danger" data-act="delete">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6"/></svg>
+    <span>Delete</span>
+  </div>
+</div>
+
+<!-- sort popover -->
+<div class="popover glass" id="sortPopover">
+  <div class="pop-item" data-sort="recent">Most recent</div>
+  <div class="pop-item" data-sort="title">Title A–Z</div>
+  <div class="pop-item" data-sort="oldest">Oldest first</div>
+</div>
+
+<!-- drawing overlay -->
+<div class="draw-overlay" id="drawOverlay">
+  <div class="draw-top">
+    <div class="icon-btn glass" id="drawCancel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </div>
+    <span class="label">Drawing</span>
+    <div class="btn-pill primary" id="drawDone">Done</div>
+  </div>
+  <div class="draw-canvas-wrap">
+    <canvas id="drawCanvas"></canvas>
+  </div>
+  <div class="draw-tools glass">
+    <div class="draw-tools-row" id="drawColorRow"></div>
+    <div class="draw-tools-row">
+      <div class="size-preview" id="sizePreview"></div>
+      <input type="range" id="brushSize" min="2" max="28" value="6">
+      <div class="draw-actions">
+        <div class="fmt-btn" id="eraserBtn" title="Eraser">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H9l-6-6a2 2 0 010-2.8L13 2l9 9-6.5 6.5"/><path d="M9 20l6-6"/></svg>
+        </div>
+        <div class="fmt-btn" id="undoBtn" title="Undo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5v0a5 5 0 01-5 5H8"/></svg>
+        </div>
+        <div class="fmt-btn" id="clearBtn" title="Clear">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- hidden magic settings -->
+<div class="magic-panel" id="magicSettings">
+  <div class="editor-top">
+    <div class="icon-btn glass" id="magicSettingsBack">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <h1>Magic Settings</h1>
+    <div style="width:40px;"></div>
+  </div>
+  <p class="magic-hint">Each effect's body can use <b>$$$$</b> as a placeholder — it's swapped for the word tied to whatever code you enter on the lock screen. Only one effect can be active at a time.</p>
+  <div class="lockbg-section">
+    <div class="outs-label">Lock screen background</div>
+    <div class="lockbg-row">
+      <div class="lockbg-thumb" id="lockBgThumb"></div>
+      <div class="lockbg-actions">
+        <div class="btn-pill glass" id="lockBgChangeBtn">Change photo</div>
+        <div class="btn-pill glass" id="lockBgRemoveBtn">Remove</div>
+      </div>
+    </div>
+    <input type="file" id="lockBgFileInput" accept="image/*" style="display:none;">
+    <p class="effect-body-hint">Shown behind the ambient clock and the PIN screen.</p>
+  </div>
+  <div class="magic-body" id="effectsList"></div>
+  <div class="fab main magic-fab" id="newEffectBtn">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0a0a12" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+  </div>
+</div>
+
+<!-- effect editor -->
+<div class="magic-panel" id="effectEditor">
+  <div class="editor-top">
+    <div class="icon-btn glass" id="effectEditorBack">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <div class="right-actions">
+      <div class="icon-btn glass" id="deleteEffectBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6"/></svg>
+      </div>
+    </div>
+  </div>
+  <div class="magic-body">
+    <input class="effect-name-input" id="effectNameInput" placeholder="Effect name">
+    <div class="btn-pill glass effect-active-btn" id="effectActiveToggle">Set as active</div>
+    <div class="outs-label">Note title</div>
+    <input class="effect-title-input" id="effectTitleInput" placeholder="Title for the created note (optional)">
+    <div class="outs-label">Note body</div>
+    <textarea class="effect-body-input" id="effectBodyInput" placeholder="You will choose the word: $$$$"></textarea>
+    <p class="effect-body-hint">This becomes the pinned note that's created when the lock screen PIN decodes to this effect.</p>
+    <div class="outs-label">Outs — code → word or sketch</div>
+    <div id="outsList"></div>
+    <div class="btn-pill glass" id="addOutBtn">+ Add out</div>
+  </div>
+</div>
+
+<!-- magic lock flow: blackout / ambient clock / pin entry -->
+<div id="lockFlow">
+  <div class="lock-screen active" id="blackoutScreen"></div>
+  <div class="lock-screen" id="ambientScreen">
+    <div class="ambient-time" id="ambientTime">00:00</div>
+    <div class="ambient-date" id="ambientDate"></div>
+    <div class="ambient-hint">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      Swipe up to unlock
+    </div>
+  </div>
+  <div class="lock-screen" id="pinScreen">
+    <div class="pin-abort-zone" id="pinAbortZone">
+      <svg class="pin-lock-icon" width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm0 2a3 3 0 013 3v3H9V6a3 3 0 013-3zm0 10.5a1.5 1.5 0 011.5 1.5c0 .68-.4 1.26-.98 1.53l.36 1.72a.4.4 0 01-.39.48h-.98a.4.4 0 01-.39-.48l.36-1.72A1.5 1.5 0 0112 13.5z"/>
+      </svg>
+      <div class="pin-label">Enter PIN</div>
+      <div class="pin-dots" id="pinDots"></div>
+    </div>
+    <div class="pin-keypad" id="pinKeypad"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- persistence ---------------- */
+  var STORAGE_KEY = "liquidnotes_v1";
+  var memoryStore = null;
+  function loadNotes(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){ /* storage unavailable, fall back to memory */ }
+    return memoryStore || seedNotes();
+  }
+  function saveNotes(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+    }catch(e){
+      memoryStore = notes;
+    }
+  }
+  function seedNotes(){
+    var now = Date.now();
+    return [
+      {id:uid(), title:"Welcome to Notes", contentHTML:"<p>This is a glassy little notes app. Tap the <b>+</b> to create a note, or the pencil to sketch something. Long-press a card for more actions.</p>", drawing:null, color:"violet", pinned:true, archived:false, updatedAt: now},
+      {id:uid(), title:"Groceries", contentHTML:"<ul class='checklist'><li><span class='cbox'></span><span>Oat milk</span></li><li class='done'><span class='cbox'></span><span>Coffee beans</span></li><li><span class='cbox'></span><span>Basil</span></li></ul>", drawing:null, color:"teal", pinned:false, archived:false, updatedAt: now-3600000}
+    ];
+  }
+  function uid(){ return 'n' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+  var notes = loadNotes();
+
+  /* ---------------- state ---------------- */
+  var state = {
+    filter: 'all',
+    search: '',
+    sort: 'recent',
+    activeNoteId: null,
+    editingDrawingTarget: null // 'slot' when editing note's attached drawing
+  };
+
+  var colorMap = {
+    none: null,
+    violet: 'var(--blob-violet)',
+    rose: 'var(--blob-rose)',
+    teal: 'var(--blob-teal)',
+    amber: 'var(--blob-amber)'
+  };
+
+  /* ---------------- elements ---------------- */
+  var grid = document.getElementById('grid');
+  var emptyState = document.getElementById('emptyState');
+  var chipRow = document.getElementById('chipRow');
+  var searchInput = document.getElementById('searchInput');
+  var editor = document.getElementById('editor');
+  var scrim = document.getElementById('scrim');
+  var popoverScrim = document.getElementById('popoverScrim');
+  var titleInput = document.getElementById('titleInput');
+  var contentEditable = document.getElementById('contentEditable');
+  var drawingSlot = document.getElementById('drawingSlot');
+  var morePopover = document.getElementById('morePopover');
+  var popSwatches = document.getElementById('popSwatches');
+  var sortPopover = document.getElementById('sortPopover');
+  var sortLabel = document.getElementById('sortLabel');
+  var editorPin = document.getElementById('editorPin');
+  var drawOverlay = document.getElementById('drawOverlay');
+  var drawCanvas = document.getElementById('drawCanvas');
+  var ctx = drawCanvas.getContext('2d');
+
+  var chips = [
+    {key:'all', label:'All'},
+    {key:'pinned', label:'Pinned'},
+    {key:'checklists', label:'Checklists'},
+    {key:'drawings', label:'Drawings'},
+    {key:'archived', label:'Archived'}
+  ];
+  chips.forEach(function(c){
+    var el = document.createElement('div');
+    el.className = 'chip' + (c.key==='all' ? ' active' : '');
+    el.textContent = c.label;
+    el.dataset.key = c.key;
+    el.addEventListener('click', function(){
+      if(c.key === state.filter || switching) return;
+      var dir = chipKeys.indexOf(c.key) > chipKeys.indexOf(state.filter) ? 1 : -1;
+      commitSwitch(c.key, dir);
+    });
+    chipRow.appendChild(el);
+  });
+  var chipKeys = chips.map(function(c){ return c.key; });
+  var tabContent = document.getElementById('tabContent');
+  var switching = false;
+  var EASE = 'cubic-bezier(.32,.72,0,1)';
+
+  function applyFilter(key){
+    state.filter = key;
+    Array.prototype.forEach.call(chipRow.children, function(ch){
+      ch.classList.toggle('active', ch.dataset.key === key);
+    });
+    var activeChip = chipRow.querySelector('.chip.active');
+    if(activeChip) activeChip.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+    render();
+  }
+
+  /* directional slide transition used by both chip taps and swipes (transform-only:
+     fading opacity on a container full of backdrop-filter cards causes a flash of
+     unblurred content mid-transition in some browsers, so we slide without fading) */
+  function commitSwitch(key, dir){
+    if(switching) return;
+    switching = true;
+    tabContent.style.transition = 'transform .2s '+EASE;
+    tabContent.style.transform = 'translateX(' + (dir > 0 ? '-32px' : '32px') + ')';
+    setTimeout(function(){
+      applyFilter(key);
+      tabContent.style.transition = 'none';
+      tabContent.style.transform = 'translateX(' + (dir > 0 ? '32px' : '-32px') + ')';
+      void tabContent.offsetWidth; /* force reflow so the next transition actually animates */
+      tabContent.style.transition = 'transform .32s '+EASE;
+      tabContent.style.transform = 'translateX(0)';
+      setTimeout(function(){ switching = false; }, 330);
+    }, 180);
+  }
+
+  /* swipe between tabs, with the content following the finger while dragging */
+  var mainEl = document.querySelector('main');
+  var swipeStartX = 0, swipeStartY = 0, dragging = false, dragAborted = false;
+  mainEl.addEventListener('touchstart', function(e){
+    if(e.touches.length !== 1 || switching) return;
+    swipeStartX = e.touches[0].clientX;
+    swipeStartY = e.touches[0].clientY;
+    dragging = true;
+    dragAborted = false;
+    tabContent.style.transition = 'none';
+  }, {passive:true});
+  mainEl.addEventListener('touchmove', function(e){
+    if(!dragging || dragAborted) return;
+    var t = e.touches[0];
+    var dx = t.clientX - swipeStartX;
+    var dy = t.clientY - swipeStartY;
+    if(Math.abs(dy) > Math.abs(dx) * 1.4){
+      dragAborted = true;
+      tabContent.style.transition = 'transform .22s '+EASE;
+      tabContent.style.transform = 'translateX(0)';
+      return;
+    }
+    var idx = chipKeys.indexOf(state.filter);
+    var atStart = dx > 0 && idx === 0;
+    var atEnd = dx < 0 && idx === chipKeys.length - 1;
+    var rubber = (atStart || atEnd) ? 0.35 : 1;
+    var moved = dx * rubber;
+    tabContent.style.transform = 'translateX(' + moved + 'px)';
+  }, {passive:true});
+  mainEl.addEventListener('touchend', function(e){
+    if(!dragging) return;
+    dragging = false;
+    if(dragAborted) return;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - swipeStartX;
+    var dy = t.clientY - swipeStartY;
+    var idx = chipKeys.indexOf(state.filter);
+    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4){
+      if(dx < 0 && idx < chipKeys.length - 1){ commitSwitch(chipKeys[idx + 1], 1); return; }
+      if(dx > 0 && idx > 0){ commitSwitch(chipKeys[idx - 1], -1); return; }
+    }
+    tabContent.style.transition = 'transform .26s '+EASE;
+    tabContent.style.transform = 'translateX(0)';
+  }, {passive:true});
+
+  searchInput.addEventListener('input', function(){
+    var val = searchInput.value.trim().toLowerCase();
+    if(val === 'magic'){
+      searchInput.value = '';
+      state.search = '';
+      searchInput.blur();
+      openMagicSettings();
+      render();
+      return;
+    }
+    state.search = val;
+    render();
+  });
+
+  /* ---------------- render notes grid ---------------- */
+  function plainText(html){
+    var d = document.createElement('div');
+    d.innerHTML = html || '';
+    return d.textContent || '';
+  }
+  function hasChecklist(note){ return /class=['"]checklist['"]/.test(note.contentHTML || ''); }
+
+  function filteredSortedNotes(){
+    var list = notes.filter(function(n){
+      if(state.filter === 'archived') return n.archived;
+      if(n.archived) return false;
+      if(state.filter === 'pinned') return n.pinned;
+      if(state.filter === 'checklists') return hasChecklist(n);
+      if(state.filter === 'drawings') return !!n.drawing;
+      return true;
+    });
+    if(state.search){
+      list = list.filter(function(n){
+        return (n.title||'').toLowerCase().indexOf(state.search) > -1 ||
+               plainText(n.contentHTML).toLowerCase().indexOf(state.search) > -1;
+      });
+    }
+    list.sort(function(a,b){
+      if(state.filter !== 'archived'){
+        if(a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      }
+      if(state.sort === 'title') return (a.title||'').localeCompare(b.title||'');
+      if(state.sort === 'oldest') return a.updatedAt - b.updatedAt;
+      return b.updatedAt - a.updatedAt;
+    });
+    return list;
+  }
+
+  function timeAgo(ts){
+    var diff = Date.now() - ts, m = Math.floor(diff/60000);
+    if(m < 1) return 'now';
+    if(m < 60) return m+'m';
+    var h = Math.floor(m/60);
+    if(h < 24) return h+'h';
+    var d = Math.floor(h/24);
+    if(d < 7) return d+'d';
+    return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  }
+
+  function render(){
+    var list = filteredSortedNotes();
+    grid.innerHTML = '';
+    emptyState.style.display = list.length ? 'none' : 'flex';
+    var pageTitles = {all:'Notes', pinned:'Pinned', checklists:'Checklists', drawings:'Drawings', archived:'Archived'};
+    document.getElementById('pageTitle').textContent = pageTitles[state.filter] || 'Notes';
+
+    list.forEach(function(n){
+      var card = document.createElement('div');
+      card.className = 'card glass';
+      var dotColor = colorMap[n.color || 'none'];
+      var html = '';
+      if(dotColor) html += '<span class="tag-dot" style="background:'+dotColor+'"></span>';
+      if(n.pinned && state.filter !== 'pinned') html += '<span class="pin" style="float:right;font-size:13px;">📌</span>';
+      if(n.drawing) html += '<img class="thumb" src="'+n.drawing+'">';
+      if(n.title) html += '<h3>'+escapeHtml(n.title)+'</h3>';
+      if(hasChecklist(n)){
+        var tmp = document.createElement('div'); tmp.innerHTML = n.contentHTML;
+        var items = tmp.querySelectorAll('li');
+        html += '<ul class="checklist-preview">';
+        Array.prototype.slice.call(items,0,5).forEach(function(li){
+          var done = li.classList.contains('done');
+          html += '<li class="'+(done?'done':'')+'"><span class="box"></span><span>'+escapeHtml(li.textContent)+'</span></li>';
+        });
+        html += '</ul>';
+      } else {
+        var text = plainText(n.contentHTML);
+        if(text) html += '<p>'+escapeHtml(text)+'</p>';
+      }
+      html += '<div class="meta"><time>'+timeAgo(n.updatedAt)+'</time></div>';
+      card.innerHTML = html;
+      card.addEventListener('click', function(){ openEditor(n.id); });
+      attachLongPress(card, function(ev){ openMorePopover(n.id, ev); });
+      grid.appendChild(card);
+    });
+  }
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function attachLongPress(el, cb){
+    var timer, moved=false;
+    el.addEventListener('touchstart', function(e){
+      moved=false;
+      timer = setTimeout(function(){ if(!moved){ cb(e.touches[0]); } }, 480);
+    });
+    el.addEventListener('touchmove', function(){ moved=true; clearTimeout(timer); });
+    el.addEventListener('touchend', function(){ clearTimeout(timer); });
+    el.addEventListener('mousedown', function(e){
+      timer = setTimeout(function(){ cb(e); }, 480);
+    });
+    el.addEventListener('mouseup', function(){ clearTimeout(timer); });
+    el.addEventListener('mouseleave', function(){ clearTimeout(timer); });
+  }
+
+  /* ---------------- editor ---------------- */
+  function openEditor(id){
+    closePopovers();
+    state.activeNoteId = id;
+    var n = notes.find(function(x){return x.id===id;});
+    titleInput.value = n.title || '';
+    contentEditable.innerHTML = n.contentHTML || '';
+    renderDrawingSlot(n);
+    updatePinIcon(n);
+    scrim.classList.add('open');
+    editor.classList.add('open');
+    bindChecklistToggles();
+  }
+  function updatePinIcon(n){
+    editorPin.style.color = n.pinned ? 'var(--blob-amber)' : 'var(--text-primary)';
+  }
+  function renderDrawingSlot(n){
+    drawingSlot.innerHTML = '';
+    if(n.drawing){
+      var wrap = document.createElement('div');
+      wrap.className = 'drawing-thumb-wrap glass';
+      wrap.innerHTML = '<img src="'+n.drawing+'"><span class="edit-badge">Edit sketch</span>';
+      wrap.addEventListener('click', function(){ openDrawing('slot'); });
+      drawingSlot.appendChild(wrap);
+    }
+  }
+  function closeEditor(){
+    saveActiveNote();
+    closePopovers();
+    editor.classList.remove('open');
+    scrim.classList.remove('open');
+    state.activeNoteId = null;
+    render();
+  }
+  function saveActiveNote(){
+    if(!state.activeNoteId) return;
+    var n = notes.find(function(x){return x.id===state.activeNoteId;});
+    if(!n) return;
+    n.title = titleInput.value.trim();
+    n.contentHTML = contentEditable.innerHTML;
+    n.updatedAt = Date.now();
+    saveNotes();
+  }
+  document.getElementById('editorBack').addEventListener('click', closeEditor);
+  scrim.addEventListener('click', function(){
+    if(editor.classList.contains('open')) closeEditor();
+    closePopovers();
+  });
+  editorPin.addEventListener('click', function(){
+    var n = notes.find(function(x){return x.id===state.activeNoteId;});
+    if(!n) return;
+    n.pinned = !n.pinned;
+    updatePinIcon(n);
+    saveNotes();
+  });
+
+  document.getElementById('fabNew').addEventListener('click', function(){ createNote(false); });
+  document.getElementById('fabDraw').addEventListener('click', function(){ createNote(true); });
+  function createNote(startDrawing){
+    var n = {id:uid(), title:'', contentHTML:'', drawing:null, color:'none', pinned:false, archived:false, updatedAt:Date.now()};
+    notes.unshift(n);
+    saveNotes();
+    openEditor(n.id);
+    setTimeout(function(){
+      if(startDrawing) openDrawing('slot');
+      else titleInput.focus();
+    }, 320);
+  }
+
+  /* ---------------- formatting toolbar ---------------- */
+  document.querySelectorAll('.fmt-btn[data-cmd]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      contentEditable.focus();
+      var cmd = btn.dataset.cmd;
+      if(cmd === 'bold' || cmd === 'italic' || cmd === 'underline'){
+        document.execCommand(cmd);
+      } else if(cmd === 'bullet'){
+        document.execCommand('insertUnorderedList');
+      } else if(cmd === 'checklist'){
+        insertChecklistItem();
+      }
+    });
+  });
+  function insertChecklistItem(){
+    var sel = window.getSelection();
+    var container = null;
+    if(sel.rangeCount){
+      var node = sel.getRangeAt(0).startContainer;
+      while(node && node !== contentEditable){
+        if(node.nodeName === 'UL' && node.classList && node.classList.contains('checklist')) { container = node; break; }
+        node = node.parentNode;
+      }
+    }
+    if(container){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="cbox"></span><span>New item</span>';
+      container.appendChild(li);
+    } else {
+      var ul = document.createElement('ul');
+      ul.className = 'checklist';
+      ul.innerHTML = '<li><span class="cbox"></span><span>New item</span></li>';
+      contentEditable.appendChild(ul);
+    }
+    bindChecklistToggles();
+  }
+  function bindChecklistToggles(){
+    contentEditable.querySelectorAll('ul.checklist li').forEach(function(li){
+      li.onclick = function(e){
+        li.classList.toggle('done');
+      };
+    });
+  }
+  contentEditable.addEventListener('focus', function(){
+    if(contentEditable.textContent.trim() === '' && !contentEditable.querySelector('ul,img')){
+      // leave empty, placeholder handled by :empty css fallback below
+    }
+  });
+
+  /* placeholder for contenteditable */
+  var style2 = document.createElement('style');
+  style2.textContent = "#contentEditable:empty:before{content:attr(data-placeholder); color:var(--text-tertiary);} #titleInput{caret-color:var(--accent-b);} #contentEditable{caret-color:var(--accent-b);}";
+  document.head.appendChild(style2);
+
+  document.getElementById('fmtDraw').addEventListener('click', function(){ openDrawing('slot'); });
+
+  /* ---------------- more popover (note actions) ---------------- */
+  var swatchColors = ['none','violet','rose','teal','amber'];
+  swatchColors.forEach(function(c){
+    var sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.background = c === 'none' ? 'rgba(255,255,255,0.15)' : colorMap[c];
+    sw.dataset.color = c;
+    sw.addEventListener('click', function(){
+      var n = notes.find(function(x){return x.id === (popoverTargetId || state.activeNoteId);});
+      if(n){ n.color = c; saveNotes(); render(); refreshSwatchSelection(); }
+    });
+    popSwatches.appendChild(sw);
+  });
+  function refreshSwatchSelection(){
+    var n = notes.find(function(x){return x.id === popoverTargetId;});
+    Array.prototype.forEach.call(popSwatches.children, function(sw){
+      sw.classList.toggle('selected', n && n.color === sw.dataset.color);
+    });
+  }
+
+  var popoverTargetId = null;
+  document.getElementById('editorMore').addEventListener('click', function(e){
+    openMorePopover(state.activeNoteId, e, true);
+  });
+  function openMorePopover(id, ev, fromEditor){
+    popoverTargetId = id;
+    var n = notes.find(function(x){return x.id===id;});
+    document.getElementById('archiveLabel').textContent = n.archived ? 'Unarchive' : 'Archive';
+    document.getElementById('pinLabel').textContent = n.pinned ? 'Unpin' : 'Pin';
+    refreshSwatchSelection();
+    positionPopover(morePopover, ev, fromEditor);
+    morePopover.classList.add('open');
+    scrim.classList.add('open');
+    popoverScrim.classList.add('open');
+  }
+  function positionPopover(pop, ev, fromEditor){
+    var x = fromEditor ? window.innerWidth - 210 : (ev.clientX || (ev.pageX) || window.innerWidth/2);
+    var y = fromEditor ? 70 : (ev.clientY || ev.pageY || 200);
+    x = Math.min(x, window.innerWidth - 210);
+    y = Math.min(y, window.innerHeight - 260);
+    pop.style.left = x + 'px';
+    pop.style.top = y + 'px';
+  }
+  morePopover.querySelectorAll('.pop-item').forEach(function(item){
+    item.addEventListener('click', function(){
+      var n = notes.find(function(x){return x.id===popoverTargetId;});
+      if(!n) return;
+      var act = item.dataset.act;
+      if(act === 'pin'){
+        n.pinned = !n.pinned;
+        if(n.id === state.activeNoteId) updatePinIcon(n);
+      }
+      if(act === 'archive'){ n.archived = !n.archived; }
+      if(act === 'delete'){
+        notes = notes.filter(function(x){return x.id !== popoverTargetId;});
+        if(state.activeNoteId === popoverTargetId){
+          editor.classList.remove('open');
+          state.activeNoteId = null;
+        }
+      }
+      saveNotes();
+      closePopovers();
+      render();
+    });
+  });
+
+  document.getElementById('sortBtn').addEventListener('click', function(e){
+    positionPopoverBottom(sortPopover);
+    sortPopover.classList.add('open');
+    scrim.classList.add('open');
+    popoverScrim.classList.add('open');
+  });
+  function positionPopoverBottom(pop){
+    pop.style.left = '18px';
+    pop.style.bottom = 'calc(70px + env(safe-area-inset-bottom,0px))';
+    pop.style.top = 'auto';
+  }
+  sortPopover.querySelectorAll('.pop-item').forEach(function(item){
+    item.addEventListener('click', function(){
+      state.sort = item.dataset.sort;
+      sortLabel.textContent = {recent:'Recent', title:'A–Z', oldest:'Oldest'}[state.sort];
+      closePopovers();
+      render();
+    });
+  });
+  function closePopovers(){
+    morePopover.classList.remove('open');
+    sortPopover.classList.remove('open');
+    popoverScrim.classList.remove('open');
+    if(!editor.classList.contains('open')) scrim.classList.remove('open');
+  }
+  popoverScrim.addEventListener('click', closePopovers);
+
+  /* ---------------- drawing canvas ---------------- */
+  var drawState = { color:'#1a1a1a', size:6, erasing:false, history:[], drawing:false, lastX:0, lastY:0 };
+  var brushColors = ['#1a1a1a','#ff5a5a','#ff9f4a','#ffd23f','#4fe8c4','#4a9fff','#8b7cff','#ff7aa2','#ffffff'];
+  var drawColorRow = document.getElementById('drawColorRow');
+  brushColors.forEach(function(c, i){
+    var sw = document.createElement('div');
+    sw.className = 'draw-color' + (i===0?' selected':'');
+    sw.style.background = c;
+    if(c === '#ffffff') sw.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.4)';
+    sw.addEventListener('click', function(){
+      drawState.color = c; drawState.erasing = false;
+      document.querySelectorAll('.draw-color').forEach(function(x){x.classList.remove('selected');});
+      sw.classList.add('selected');
+      document.getElementById('eraserBtn').classList.remove('active');
+      updateSizePreview();
+    });
+    drawColorRow.appendChild(sw);
+  });
+  var brushSizeInput = document.getElementById('brushSize');
+  var sizePreview = document.getElementById('sizePreview');
+  function updateSizePreview(){
+    var s = Math.max(6, Math.min(28, drawState.size));
+    sizePreview.style.width = s+'px';
+    sizePreview.style.height = s+'px';
+    sizePreview.style.background = drawState.erasing ? 'transparent' : drawState.color;
+    sizePreview.style.boxShadow = drawState.erasing ? 'inset 0 0 0 1.5px rgba(255,255,255,0.6)' : 'none';
+  }
+  brushSizeInput.addEventListener('input', function(){
+    drawState.size = parseInt(brushSizeInput.value,10);
+    updateSizePreview();
+  });
+  document.getElementById('eraserBtn').addEventListener('click', function(){
+    drawState.erasing = !drawState.erasing;
+    this.classList.toggle('active', drawState.erasing);
+    updateSizePreview();
+  });
+
+  function getTargetDrawing(target){
+    if(target === 'slot'){
+      var n = notes.find(function(x){return x.id===state.activeNoteId;});
+      return n ? n.drawing : null;
+    }
+    if(target && target.type === 'out'){
+      var fx = magic.effects.find(function(x){return x.id===target.effectId;});
+      var out = fx && fx.outs.find(function(o){return o.id===target.outId;});
+      return out ? out.drawing : null;
+    }
+    return null;
+  }
+  function setTargetDrawing(target, dataUrl){
+    if(target === 'slot'){
+      var n = notes.find(function(x){return x.id===state.activeNoteId;});
+      if(n){
+        n.drawing = dataUrl;
+        n.updatedAt = Date.now();
+        renderDrawingSlot(n);
+        saveNotes();
+      }
+      return;
+    }
+    if(target && target.type === 'out'){
+      var fx = magic.effects.find(function(x){return x.id===target.effectId;});
+      var out = fx && fx.outs.find(function(o){return o.id===target.outId;});
+      if(out){
+        out.drawing = dataUrl;
+        saveMagic();
+        renderOutsList(fx);
+      }
+    }
+  }
+  function openDrawing(target){
+    state.editingDrawingTarget = target;
+    drawOverlay.classList.add('open');
+    setTimeout(function(){
+      setupCanvas();
+      drawState.history = [];
+      var existing = getTargetDrawing(target);
+      if(existing){
+        var img = new Image();
+        img.onload = function(){
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0,0,drawState.logicalW, drawState.logicalH);
+          ctx.drawImage(img, 0,0, drawState.logicalW, drawState.logicalH);
+          pushHistory();
+        };
+        img.src = existing;
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0,0,drawState.logicalW, drawState.logicalH);
+        pushHistory();
+      }
+    }, 60);
+  }
+  function setupCanvas(){
+    var wrap = drawCanvas.parentElement;
+    var dpr = window.devicePixelRatio || 1;
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    drawCanvas.width = w * dpr;
+    drawCanvas.height = h * dpr;
+    drawCanvas.style.width = w+'px';
+    drawCanvas.style.height = h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    drawState.logicalW = w;
+    drawState.logicalH = h;
+  }
+  function pushHistory(){
+    try{
+      drawState.history.push(drawCanvas.toDataURL());
+      if(drawState.history.length > 25) drawState.history.shift();
+    }catch(e){}
+  }
+  function getPos(e){
+    var rect = drawCanvas.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+  function startDraw(e){
+    e.preventDefault();
+    drawState.drawing = true;
+    var p = getPos(e);
+    drawState.lastX = p.x; drawState.lastY = p.y;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, drawState.size/2, 0, Math.PI*2);
+    ctx.fillStyle = drawState.erasing ? '#ffffff' : drawState.color;
+    ctx.fill();
+  }
+  function moveDraw(e){
+    if(!drawState.drawing) return;
+    e.preventDefault();
+    var p = getPos(e);
+    ctx.strokeStyle = drawState.erasing ? '#ffffff' : drawState.color;
+    ctx.lineWidth = drawState.size;
+    ctx.beginPath();
+    ctx.moveTo(drawState.lastX, drawState.lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    drawState.lastX = p.x; drawState.lastY = p.y;
+  }
+  function endDraw(e){
+    if(!drawState.drawing) return;
+    drawState.drawing = false;
+    pushHistory();
+  }
+  drawCanvas.addEventListener('mousedown', startDraw);
+  drawCanvas.addEventListener('mousemove', moveDraw);
+  window.addEventListener('mouseup', endDraw);
+  drawCanvas.addEventListener('touchstart', startDraw, {passive:false});
+  drawCanvas.addEventListener('touchmove', moveDraw, {passive:false});
+  drawCanvas.addEventListener('touchend', endDraw);
+
+  document.getElementById('undoBtn').addEventListener('click', function(){
+    if(drawState.history.length <= 1) return;
+    drawState.history.pop();
+    var last = drawState.history[drawState.history.length-1];
+    var img = new Image();
+    img.onload = function(){
+      ctx.clearRect(0,0,drawState.logicalW,drawState.logicalH);
+      ctx.drawImage(img,0,0,drawState.logicalW, drawState.logicalH);
+    };
+    img.src = last;
+  });
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,drawState.logicalW, drawState.logicalH);
+    pushHistory();
+  });
+  document.getElementById('drawCancel').addEventListener('click', function(){
+    drawOverlay.classList.remove('open');
+  });
+  document.getElementById('drawDone').addEventListener('click', function(){
+    var dataUrl = drawCanvas.toDataURL('image/png');
+    setTargetDrawing(state.editingDrawingTarget, dataUrl);
+    drawOverlay.classList.remove('open');
+  });
+  updateSizePreview();
+
+  /* ---------------- magic settings (hidden) ---------------- */
+  var MAGIC_KEY = "liquidnotes_magic_v1";
+  function loadMagic(){
+    try{
+      var raw = localStorage.getItem(MAGIC_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return {effects:[], activeEffectId:null};
+  }
+  function saveMagic(){
+    try{ localStorage.setItem(MAGIC_KEY, JSON.stringify(magic)); }catch(e){}
+  }
+  var magic = loadMagic();
+  var editingEffectId = null;
+
+  var magicSettings = document.getElementById('magicSettings');
+  var effectsListEl = document.getElementById('effectsList');
+  var effectEditor = document.getElementById('effectEditor');
+  var effectNameInput = document.getElementById('effectNameInput');
+  var effectTitleInput = document.getElementById('effectTitleInput');
+  var effectBodyInput = document.getElementById('effectBodyInput');
+  var effectActiveToggle = document.getElementById('effectActiveToggle');
+  var outsListEl = document.getElementById('outsList');
+  var lockBgThumb = document.getElementById('lockBgThumb');
+  var lockBgChangeBtn = document.getElementById('lockBgChangeBtn');
+  var lockBgRemoveBtn = document.getElementById('lockBgRemoveBtn');
+  var lockBgFileInput = document.getElementById('lockBgFileInput');
+
+  var photoPlaceholderSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-4 4-3-3-5 5"/></svg>';
+  function renderLockBgUI(){
+    lockBgThumb.innerHTML = magic.lockBackground ? '<img src="'+magic.lockBackground+'">' : photoPlaceholderSvg;
+    lockBgRemoveBtn.classList.toggle('show', !!magic.lockBackground);
+  }
+  function applyLockBackground(){
+    var scrimAmbient = "linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.6))";
+    var scrimPin = "linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 32%, rgba(0,0,0,0.75))";
+    if(magic.lockBackground){
+      ambientScreen.style.backgroundImage = scrimAmbient + ", url('" + magic.lockBackground + "')";
+      ambientScreen.style.backgroundSize = 'cover';
+      ambientScreen.style.backgroundPosition = 'center';
+      pinScreen.style.backgroundImage = scrimPin + ", url('" + magic.lockBackground + "')";
+      pinScreen.style.backgroundSize = 'cover';
+      pinScreen.style.backgroundPosition = 'center';
+    } else {
+      ambientScreen.style.backgroundImage = '';
+      pinScreen.style.backgroundImage = '';
+    }
+  }
+  function resizeImageFile(file, maxDim, cb){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var w = img.width, h = img.height;
+        var scale = Math.min(1, maxDim / Math.max(w, h));
+        var cw = Math.max(1, Math.round(w * scale));
+        var ch = Math.max(1, Math.round(h * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+        try{ cb(canvas.toDataURL('image/jpeg', 0.85)); }catch(err){ cb(e.target.result); }
+      };
+      img.onerror = function(){ cb(e.target.result); };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  lockBgChangeBtn.addEventListener('click', function(){ lockBgFileInput.click(); });
+  lockBgFileInput.addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    resizeImageFile(file, 1440, function(dataUrl){
+      magic.lockBackground = dataUrl;
+      saveMagic();
+      renderLockBgUI();
+      applyLockBackground();
+    });
+    lockBgFileInput.value = '';
+  });
+  lockBgRemoveBtn.addEventListener('click', function(){
+    magic.lockBackground = null;
+    saveMagic();
+    renderLockBgUI();
+    applyLockBackground();
+  });
+
+  function openMagicSettings(){
+    renderEffectsList();
+    renderLockBgUI();
+    magicSettings.classList.add('open');
+  }
+  function closeMagicSettings(){
+    magicSettings.classList.remove('open');
+  }
+  document.getElementById('magicSettingsBack').addEventListener('click', closeMagicSettings);
+  document.getElementById('newEffectBtn').addEventListener('click', function(){
+    var fx = {id:uid(), name:'', title:'', body:'', outs:[]};
+    magic.effects.unshift(fx);
+    saveMagic();
+    openEffectEditor(fx.id);
+  });
+
+  function renderEffectsList(){
+    effectsListEl.innerHTML = '';
+    if(!magic.effects.length){
+      var empty = document.createElement('div');
+      empty.className = 'magic-empty';
+      empty.textContent = 'No effects yet. Tap + to create one.';
+      effectsListEl.appendChild(empty);
+      return;
+    }
+    magic.effects.forEach(function(fx){
+      var card = document.createElement('div');
+      card.className = 'card glass magic-effect-card';
+      var outCount = fx.outs.length;
+      card.innerHTML =
+        '<div class="magic-effect-row">' +
+          '<h3>'+escapeHtml(fx.name || 'Untitled effect')+'</h3>' +
+          (magic.activeEffectId === fx.id ? '<span class="active-pill">ACTIVE</span>' : '') +
+        '</div>' +
+        '<div class="meta"><span style="font-size:12px;color:var(--text-tertiary);">'+outCount+' out'+(outCount===1?'':'s')+'</span></div>';
+      card.addEventListener('click', function(){ openEffectEditor(fx.id); });
+      effectsListEl.appendChild(card);
+    });
+  }
+
+  function currentEditingEffect(){
+    return magic.effects.find(function(x){ return x.id === editingEffectId; });
+  }
+  function openEffectEditor(id){
+    editingEffectId = id;
+    var fx = currentEditingEffect();
+    if(!fx) return;
+    effectNameInput.value = fx.name || '';
+    effectTitleInput.value = fx.title || '';
+    effectBodyInput.value = fx.body || '';
+    updateActiveToggle(fx);
+    renderOutsList(fx);
+    effectEditor.classList.add('open');
+  }
+  function closeEffectEditor(){
+    effectEditor.classList.remove('open');
+    editingEffectId = null;
+    renderEffectsList();
+  }
+  function updateActiveToggle(fx){
+    var isActive = magic.activeEffectId === fx.id;
+    effectActiveToggle.classList.toggle('is-active', isActive);
+    effectActiveToggle.textContent = isActive ? 'Active effect \u2713' : 'Set as active';
+  }
+  document.getElementById('effectEditorBack').addEventListener('click', closeEffectEditor);
+  effectNameInput.addEventListener('input', function(){
+    var fx = currentEditingEffect(); if(!fx) return;
+    fx.name = effectNameInput.value;
+    saveMagic();
+  });
+  effectTitleInput.addEventListener('input', function(){
+    var fx = currentEditingEffect(); if(!fx) return;
+    fx.title = effectTitleInput.value;
+    saveMagic();
+  });
+  effectBodyInput.addEventListener('input', function(){
+    var fx = currentEditingEffect(); if(!fx) return;
+    fx.body = effectBodyInput.value;
+    saveMagic();
+  });
+  effectActiveToggle.addEventListener('click', function(){
+    var fx = currentEditingEffect(); if(!fx) return;
+    magic.activeEffectId = (magic.activeEffectId === fx.id) ? null : fx.id;
+    updateActiveToggle(fx);
+    saveMagic();
+  });
+  document.getElementById('deleteEffectBtn').addEventListener('click', function(){
+    if(!editingEffectId) return;
+    magic.effects = magic.effects.filter(function(x){ return x.id !== editingEffectId; });
+    if(magic.activeEffectId === editingEffectId) magic.activeEffectId = null;
+    saveMagic();
+    closeEffectEditor();
+  });
+
+  var pencilIconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>';
+  function renderOutsList(fx){
+    outsListEl.innerHTML = '';
+    fx.outs.forEach(function(out){
+      if(!out.id) out.id = uid();
+      var row = document.createElement('div');
+      row.className = 'out-row';
+      row.innerHTML =
+        '<div class="out-row-fields">' +
+          '<input class="out-code" inputmode="numeric" placeholder="Code">' +
+          '<span class="out-arrow">\u2192</span>' +
+          '<input class="out-word" placeholder="Word (optional)">' +
+          '<div class="out-remove">\u00d7</div>' +
+        '</div>' +
+        '<div class="out-sketch-row">' +
+          '<div class="out-sketch-thumb">' + (out.drawing ? '<img src="'+out.drawing+'">' : pencilIconSvg) + '</div>' +
+          '<div class="out-sketch-btn">' + (out.drawing ? 'Edit sketch' : 'Add sketch') + '</div>' +
+          (out.drawing ? '<div class="out-sketch-clear">Remove sketch</div>' : '') +
+        '</div>';
+      var codeInput = row.querySelector('.out-code');
+      var wordInput = row.querySelector('.out-word');
+      codeInput.value = out.code;
+      wordInput.value = out.word;
+      codeInput.addEventListener('input', function(){
+        out.code = codeInput.value.replace(/[^0-9]/g,'');
+        if(codeInput.value !== out.code) codeInput.value = out.code;
+        saveMagic();
+      });
+      wordInput.addEventListener('input', function(){
+        out.word = wordInput.value;
+        saveMagic();
+      });
+      row.querySelector('.out-remove').addEventListener('click', function(){
+        fx.outs = fx.outs.filter(function(o){ return o !== out; });
+        renderOutsList(fx);
+        saveMagic();
+      });
+      row.querySelector('.out-sketch-btn').addEventListener('click', function(){
+        openDrawing({type:'out', effectId:fx.id, outId:out.id});
+      });
+      var clearBtn = row.querySelector('.out-sketch-clear');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          out.drawing = null;
+          renderOutsList(fx);
+          saveMagic();
+        });
+      }
+      outsListEl.appendChild(row);
+    });
+  }
+  document.getElementById('addOutBtn').addEventListener('click', function(){
+    var fx = currentEditingEffect(); if(!fx) return;
+    fx.outs.push({id:uid(), code:'', word:'', drawing:null});
+    renderOutsList(fx);
+    saveMagic();
+  });
+
+  /* ---------------- magic lock flow: blackout / ambient / pin ---------------- */
+  var lockFlow = document.getElementById('lockFlow');
+
+  /* immersive fullscreen: hides the browser chrome (address bar / nav bar) so the
+     blackout / ambient / pin screens bleed edge-to-edge like a real lock screen.
+     Fullscreen requires a user gesture, so it's requested on the first tap inside
+     the lock flow rather than on load. */
+  function requestImmersiveFullscreen(){
+    if(document.fullscreenElement || document.webkitFullscreenElement) return;
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if(req){ try{ req.call(el); }catch(e){} }
+  }
+  lockFlow.addEventListener('touchstart', requestImmersiveFullscreen, {passive:true});
+  lockFlow.addEventListener('click', requestImmersiveFullscreen);
+  var blackoutScreen = document.getElementById('blackoutScreen');
+  var ambientScreen = document.getElementById('ambientScreen');
+  var pinScreen = document.getElementById('pinScreen');
+  var pinDots = document.getElementById('pinDots');
+  var pinKeypad = document.getElementById('pinKeypad');
+  var ambientTimeEl = document.getElementById('ambientTime');
+  var ambientDateEl = document.getElementById('ambientDate');
+
+  var lockMode = 'cold'; // 'cold' (launch loop via ambient clock) or 'quick' (in-app re-trigger, skips ambient)
+  var pinDigits = '';
+  var clockTimer = null;
+
+  function pad2(n){ return n < 10 ? '0'+n : ''+n; }
+  function updateClocks(){
+    var d = new Date();
+    var t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    ambientTimeEl.textContent = t;
+    ambientDateEl.textContent = d.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+  }
+  function startClock(){
+    updateClocks();
+    if(clockTimer) clearInterval(clockTimer);
+    clockTimer = setInterval(updateClocks, 15000);
+  }
+  function showLockScreen(id){
+    [blackoutScreen, ambientScreen, pinScreen].forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+  function enterLockFlow(mode){
+    lockMode = mode;
+    pinDigits = '';
+    renderPinDots();
+    lockFlow.classList.add('open');
+    startClock();
+    showLockScreen('blackoutScreen');
+  }
+  function exitLockFlow(){
+    lockFlow.classList.remove('open');
+    if(clockTimer){ clearInterval(clockTimer); clockTimer = null; }
+  }
+
+  function attachDoubleTap(el, cb){
+    var lastTap = 0;
+    el.addEventListener('touchend', function(e){
+      var now = Date.now();
+      if(now - lastTap < 320){ lastTap = 0; cb(e); }
+      else { lastTap = now; }
+    });
+    el.addEventListener('dblclick', function(e){ cb(e); });
+  }
+
+  /* double-tap blackout: cold flow wakes to ambient clock, quick flow jumps straight to PIN */
+  attachDoubleTap(blackoutScreen, function(){
+    if(lockMode === 'quick') showLockScreen('pinScreen');
+    else showLockScreen('ambientScreen');
+  });
+
+  /* swipe up on ambient clock to reach the PIN screen */
+  var ambStartY = 0, ambDragging = false;
+  ambientScreen.addEventListener('touchstart', function(e){
+    ambStartY = e.touches[0].clientY;
+    ambDragging = true;
+  }, {passive:true});
+  ambientScreen.addEventListener('touchend', function(e){
+    if(!ambDragging) return;
+    ambDragging = false;
+    var dy = e.changedTouches[0].clientY - ambStartY;
+    if(dy < -60) showLockScreen('pinScreen');
+  }, {passive:true});
+
+  /* secret abort: double-tap the zone above the dial pad to bail back to blackout */
+  attachDoubleTap(document.getElementById('pinAbortZone'), function(){
+    pinDigits = '';
+    renderPinDots();
+    lockMode = 'cold';
+    showLockScreen('blackoutScreen');
+  });
+
+  var keypadKeys = ['1','2','3','4','5','6','7','8','9','empty','0','delete'];
+  keypadKeys.forEach(function(k){
+    var btn = document.createElement('div');
+    btn.className = 'pin-key';
+    if(k === 'empty'){
+      btn.classList.add('empty');
+    } else if(k === 'delete'){
+      btn.classList.add('delete');
+      btn.textContent = 'Delete';
+    } else {
+      btn.textContent = k;
+    }
+    btn.addEventListener('click', function(){ handlePinKey(k); });
+    pinKeypad.appendChild(btn);
+  });
+
+  /* number of dot slots shown / digits required before auto-submitting; mirrors the
+     longest configured code for the active effect, defaulting to a standard 4-digit PIN */
+  function requiredPinLength(){
+    var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    var len = 4;
+    if(fx){
+      fx.outs.forEach(function(o){
+        if(o.code && String(o.code).length > len) len = String(o.code).length;
+      });
+    }
+    return len;
+  }
+  function renderPinDots(){
+    pinDots.innerHTML = '';
+    var total = requiredPinLength();
+    for(var i=0;i<total;i++){
+      var dot = document.createElement('div');
+      dot.className = 'pin-dot' + (i < pinDigits.length ? ' filled' : '');
+      pinDots.appendChild(dot);
+    }
+  }
+  function handlePinKey(k){
+    if(k === 'empty') return;
+    if(k === 'delete'){ pinDigits = pinDigits.slice(0,-1); renderPinDots(); return; }
+    if(pinDigits.length >= 16) return;
+    pinDigits += k;
+    renderPinDots();
+    if(pinDigits.length >= requiredPinLength()) resolvePin(pinDigits);
+  }
+
+  /* turns an effect body + resolved word into note contentHTML, replacing $$$$ */
+  function buildEffectHtml(body, word){
+    var escapedWord = escapeHtml(word);
+    var lines = (body || '').split('\n');
+    return lines.map(function(line){
+      var escaped = escapeHtml(line).split('$$$$').join(escapedWord);
+      return '<p>' + (escaped || '<br>') + '</p>';
+    }).join('');
+  }
+
+  /* decodes the entered PIN against the active effect's outs and drops the resulting note at the top of the list */
+  function resolvePin(pin){
+    var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    if(fx){
+      var codeLen = 2;
+      fx.outs.forEach(function(o){
+        if(o.code && String(o.code).length > codeLen) codeLen = String(o.code).length;
+      });
+      var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
+      var target = parseInt(lastDigits, 10);
+      var match = fx.outs.find(function(o){ return o.code !== '' && parseInt(o.code,10) === target; });
+      var word = match ? match.word : '\ud83e\uddd0';
+      var drawing = match ? (match.drawing || null) : null;
+      var n = {id:uid(), title:fx.title || '', contentHTML:buildEffectHtml(fx.body, word), drawing:drawing, color:'none', pinned:true, archived:false, updatedAt:Date.now()};
+      notes.unshift(n);
+      saveNotes();
+      state.sort = 'recent';
+      sortLabel.textContent = 'Recent';
+    }
+    pinDigits = '';
+    exitLockFlow();
+    applyFilter('all');
+  }
+
+  /* in-app quick trigger: double-tap the tab title to summon the blackout screen */
+  attachDoubleTap(document.getElementById('pageTitle'), function(){
+    if(editor.classList.contains('open')) closeEditor();
+    closePopovers();
+    enterLockFlow('quick');
+  });
+
+  /* ---------------- theme toggle ---------------- */
+  var themeToggle = document.getElementById('themeToggle');
+  var iconMoon = document.getElementById('themeIconMoon');
+  var iconSun = document.getElementById('themeIconSun');
+  function applyTheme(mode){
+    document.body.classList.toggle('light', mode === 'light');
+    iconMoon.style.display = mode === 'light' ? 'none' : 'block';
+    iconSun.style.display = mode === 'light' ? 'block' : 'none';
+    try{ localStorage.setItem('liquidnotes_theme', mode); }catch(e){}
+  }
+  var savedTheme = 'dark';
+  try{ savedTheme = localStorage.getItem('liquidnotes_theme') || 'dark'; }catch(e){}
+  applyTheme(savedTheme);
+  themeToggle.addEventListener('click', function(){
+    var next = document.body.classList.contains('light') ? 'dark' : 'light';
+    applyTheme(next);
+  });
+
+  /* ---------------- init ---------------- */
+  render();
+  applyLockBackground();
+  enterLockFlow('cold');
+})();
+</script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+</script>
+</body>
+</html>
