@@ -1,0 +1,6 @@
+{
+  "appId": "com.notesapp.offline",
+  "appName": "Notes",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
