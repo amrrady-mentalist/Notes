@@ -126,7 +126,7 @@ h1{
 .chip.active{color:var(--text-primary); background:var(--glass-fill-strong);}
 
 /* ---------- notes grid ---------- */
-main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + env(safe-area-inset-bottom,0px));}
+main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + env(safe-area-inset-bottom,0px)); touch-action:pan-y;}
 .tab-content{will-change:transform;}
 .grid{
   column-count:2; column-gap:12px;
@@ -660,12 +660,12 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     <div id="effectListSection" style="display:none;">
       <div class="outs-label">Note title</div>
       <input class="effect-title-input" id="listTitleInput" placeholder="Title for the created list (optional)">
-      <div class="outs-label">Force word</div>
-      <input class="effect-title-input" id="listForceWordInput" placeholder="The word that replaces an item">
-      <p class="effect-body-hint">On the lock screen, enter any 2-digit code while this effect is active. 01–99 forces that item number; 00 forces item 100.</p>
-      <div class="outs-label">Items 1–100 (one per line)</div>
+      <div class="outs-label">Force item</div>
+      <input class="effect-title-input" id="listForceWordInput" placeholder="Paste one of the items below - its position will change">
+      <p class="effect-body-hint" id="listForceHint">On the lock screen, enter your PIN while this effect is active. The app reads the last 2 digits to move the force item into position (00 = last item).</p>
+      <div class="outs-label">Items — up to 1000 (one per line)</div>
       <textarea class="effect-body-input" id="listItemsInput" placeholder="Item 1&#10;Item 2&#10;Item 3&#10;..." style="min-height:220px;"></textarea>
-      <p class="effect-body-hint" id="listItemsCount">0 / 100 items</p>
+      <p class="effect-body-hint" id="listItemsCount">0 items</p>
     </div>
   </div>
 </div>
@@ -796,69 +796,35 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     render();
   }
 
-  /* directional slide transition used by both chip taps and swipes (transform-only:
-     fading opacity on a container full of backdrop-filter cards causes a flash of
-     unblurred content mid-transition in some browsers, so we slide without fading) */
+  /* directional slide transition used for tab taps (transform-only: fading opacity
+     on a container full of backdrop-filter cards causes a flash of unblurred content
+     mid-transition in some browsers, so we slide without fading). Swipe-to-switch has
+     been removed in favor of tapping a tab name directly, so this is now the single,
+     consistent way tabs change - driven by requestAnimationFrame handoff plus a
+     transitionend listener for the smoothest possible cut between the two legs. */
   function commitSwitch(key, dir){
     if(switching) return;
     switching = true;
-    tabContent.style.transition = 'transform .2s '+EASE;
-    tabContent.style.transform = 'translateX(' + (dir > 0 ? '-32px' : '32px') + ')';
-    setTimeout(function(){
+    tabContent.style.transition = 'transform .18s '+EASE;
+    tabContent.style.transform = 'translateX(' + (dir > 0 ? '-22px' : '22px') + ')';
+    var swapped = false;
+    function playIn(){
+      if(swapped) return;
+      swapped = true;
       applyFilter(key);
       tabContent.style.transition = 'none';
-      tabContent.style.transform = 'translateX(' + (dir > 0 ? '32px' : '-32px') + ')';
-      void tabContent.offsetWidth; /* force reflow so the next transition actually animates */
-      tabContent.style.transition = 'transform .32s '+EASE;
-      tabContent.style.transform = 'translateX(0)';
-      setTimeout(function(){ switching = false; }, 330);
-    }, 180);
+      tabContent.style.transform = 'translateX(' + (dir > 0 ? '22px' : '-22px') + ')';
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          tabContent.style.transition = 'transform .28s '+EASE;
+          tabContent.style.transform = 'translateX(0)';
+        });
+      });
+      setTimeout(function(){ switching = false; }, 300);
+    }
+    tabContent.addEventListener('transitionend', playIn, {once:true});
+    setTimeout(playIn, 200); /* safety fallback in case transitionend doesn't fire */
   }
-
-  /* swipe between tabs, with the content following the finger while dragging */
-  var mainEl = document.querySelector('main');
-  var swipeStartX = 0, swipeStartY = 0, dragging = false, dragAborted = false;
-  mainEl.addEventListener('touchstart', function(e){
-    if(e.touches.length !== 1 || switching) return;
-    swipeStartX = e.touches[0].clientX;
-    swipeStartY = e.touches[0].clientY;
-    dragging = true;
-    dragAborted = false;
-    tabContent.style.transition = 'none';
-  }, {passive:true});
-  mainEl.addEventListener('touchmove', function(e){
-    if(!dragging || dragAborted) return;
-    var t = e.touches[0];
-    var dx = t.clientX - swipeStartX;
-    var dy = t.clientY - swipeStartY;
-    if(Math.abs(dy) > Math.abs(dx) * 1.4){
-      dragAborted = true;
-      tabContent.style.transition = 'transform .22s '+EASE;
-      tabContent.style.transform = 'translateX(0)';
-      return;
-    }
-    var idx = chipKeys.indexOf(state.filter);
-    var atStart = dx > 0 && idx === 0;
-    var atEnd = dx < 0 && idx === chipKeys.length - 1;
-    var rubber = (atStart || atEnd) ? 0.35 : 1;
-    var moved = dx * rubber;
-    tabContent.style.transform = 'translateX(' + moved + 'px)';
-  }, {passive:true});
-  mainEl.addEventListener('touchend', function(e){
-    if(!dragging) return;
-    dragging = false;
-    if(dragAborted) return;
-    var t = e.changedTouches[0];
-    var dx = t.clientX - swipeStartX;
-    var dy = t.clientY - swipeStartY;
-    var idx = chipKeys.indexOf(state.filter);
-    if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4){
-      if(dx < 0 && idx < chipKeys.length - 1){ commitSwitch(chipKeys[idx + 1], 1); return; }
-      if(dx > 0 && idx > 0){ commitSwitch(chipKeys[idx - 1], -1); return; }
-    }
-    tabContent.style.transition = 'transform .26s '+EASE;
-    tabContent.style.transform = 'translateX(0)';
-  }, {passive:true});
 
   searchInput.addEventListener('input', function(){
     var val = searchInput.value.trim().toLowerCase();
@@ -1508,8 +1474,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     magic.effects.forEach(function(fx){
       var card = document.createElement('div');
       card.className = 'card glass magic-effect-card';
+      var listCount = fx.type === 'list' ? (fx.items || []).filter(function(i){return i && i.trim();}).length : 0;
       var metaText = fx.type === 'list'
-        ? (fx.items || []).filter(function(i){return i && i.trim();}).length + ' / 100 items'
+        ? Math.min(listCount, 1000) + (listCount === 1 ? ' item' : ' items')
         : fx.outs.length + ' out' + (fx.outs.length === 1 ? '' : 's');
       card.innerHTML =
         '<div class="magic-effect-row">' +
@@ -1533,6 +1500,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var listForceWordInput = document.getElementById('listForceWordInput');
   var listItemsInput = document.getElementById('listItemsInput');
   var listItemsCount = document.getElementById('listItemsCount');
+  var listForceHint = document.getElementById('listForceHint');
 
   function applyEffectTypeUI(fx){
     var isList = fx.type === 'list';
@@ -1556,7 +1524,17 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   });
   function updateListItemsCount(){
     var lines = listItemsInput.value.split('\n').filter(function(l){return l.trim() !== '';});
-    listItemsCount.textContent = Math.min(lines.length,100) + ' / 100 items' + (lines.length > 100 ? ' (only first 100 are used)' : '');
+    var n = Math.min(lines.length, 1000);
+    var digits = n > 100 ? 3 : 2;
+    listItemsCount.textContent = n + (n === 1 ? ' item' : ' items') +
+      (lines.length > 1000 ? ' (only first 1000 are used)' : '') +
+      ' · ' + digits + '-digit code';
+    if(listForceHint){
+      listForceHint.textContent = n === 0
+        ? 'On the lock screen, enter your PIN while this effect is active. Add items below to set this up.'
+        : 'On the lock screen, enter your PIN while this effect is active. The app reads the last ' + digits +
+          ' digits to move the force item into position (' + '0'.repeat(digits) + ' = last item).';
+    }
   }
   listTitleInput.addEventListener('input', function(){
     var fx = currentEditingEffect(); if(!fx) return;
@@ -1720,7 +1698,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var ambientTimeEl = document.getElementById('ambientTime');
   var ambientDateEl = document.getElementById('ambientDate');
 
-  var lockMode = 'cold'; // 'cold' (launch loop via ambient clock) or 'quick' (in-app re-trigger, skips ambient)
   var pinDigits = '';
   var clockTimer = null;
 
@@ -1740,8 +1717,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     [blackoutScreen, ambientScreen, pinScreen].forEach(function(s){ s.classList.remove('active'); });
     document.getElementById(id).classList.add('active');
   }
-  function enterLockFlow(mode){
-    lockMode = mode;
+  function enterLockFlow(){
     pinDigits = '';
     renderPinDots();
     lockFlow.classList.add('open');
@@ -1763,10 +1739,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     el.addEventListener('dblclick', function(e){ cb(e); });
   }
 
-  /* double-tap blackout: cold flow wakes to ambient clock, quick flow jumps straight to PIN */
+  /* double-tap blackout: always wakes to the ambient clock screen */
   attachDoubleTap(blackoutScreen, function(){
-    if(lockMode === 'quick') showLockScreen('pinScreen');
-    else showLockScreen('ambientScreen');
+    showLockScreen('ambientScreen');
   });
 
   /* swipe up on ambient clock to reach the PIN screen */
@@ -1786,7 +1761,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   attachDoubleTap(document.getElementById('pinAbortZone'), function(){
     pinDigits = '';
     renderPinDots();
-    lockMode = 'cold';
     showLockScreen('blackoutScreen');
   });
 
@@ -1818,23 +1792,54 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     }
     return len;
   }
-  /* builds a plain numbered 1-100 list (no checkboxes) */
+  /* the list's real, ordered items: blank lines are dropped and the list is capped
+     at 1000 entries. This is the single source of truth for both the on-screen
+     count and the actual list length used for code-decoding. */
+  function listActualItems(items){
+    var arr = (items || []).filter(function(l){ return l && l.trim() !== ''; });
+    if(arr.length > 1000) arr = arr.slice(0, 1000);
+    return arr;
+  }
+  /* lists of 100 items or fewer are addressed with a 2-digit code (00-99);
+     larger lists (up to 1000) need a 3-digit code (000-999) */
+  function listCodeDigits(items){
+    return listActualItems(items).length > 100 ? 3 : 2;
+  }
+  /* builds a plain numbered list (no checkboxes), sized to exactly however many
+     real items were entered - it never pads out to 100 and never truncates at 100 */
   function buildListPlainHtml(items){
-    var arr = (items || []).slice(0, 100);
-    while(arr.length < 100) arr.push('');
+    var arr = listActualItems(items);
     return '<ol class="force-list">' + arr.map(function(text){
       return '<li>' + escapeHtml(text) + '</li>';
     }).join('') + '</ol>';
   }
-  /* same numbered list, but with the force word swapped into the position derived
-     from the last 2 digits of the entered code (00 = item 100) */
+  /* moves the force item (which must match one of the list's own items verbatim)
+     to the position derived from the entered code, instead of overwriting whatever
+     was already in that slot. The rest of the list keeps its relative order. Code
+     length auto-scales with list size: 2 digits for <=100 items (00 = last item),
+     3 digits for 101-1000 items (000 = last item). If the code points past the
+     list's actual length it wraps around, so every code always lands somewhere. */
   function buildListForceHtml(items, forceWord, code){
-    var arr = (items || []).slice(0, 100);
-    while(arr.length < 100) arr.push('');
+    var arr = listActualItems(items);
+    var n = arr.length;
+    if(n === 0) return buildListPlainHtml(items);
+    var digits = n > 100 ? 3 : 2;
+    var base = digits === 2 ? 100 : 1000;
     var val = parseInt(code, 10);
     if(isNaN(val)) val = 0;
-    var targetIdx = (val === 0) ? 99 : Math.max(0, Math.min(99, val - 1));
-    arr[targetIdx] = forceWord || '';
+    var effectiveVal = (val === 0) ? base : val;
+    var targetPos = ((effectiveVal - 1) % n) + 1; /* 1-based position in the final list */
+    var fw = (forceWord || '').trim();
+    var idx = -1;
+    if(fw){
+      for(var i=0;i<arr.length;i++){
+        if(arr[i].trim() === fw){ idx = i; break; }
+      }
+    }
+    if(idx > -1){
+      arr.splice(idx, 1);
+      arr.splice(Math.min(targetPos - 1, arr.length), 0, fw);
+    }
     return '<ol class="force-list">' + arr.map(function(text){
       return '<li>' + escapeHtml(text) + '</li>';
     }).join('') + '</ol>';
@@ -1896,8 +1901,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function resolvePin(pin){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     if(fx && fx.type === 'list'){
-      var lastTwo = pin.length >= 2 ? pin.slice(-2) : pin;
-      var html = buildListForceHtml(fx.items, fx.forceWord, lastTwo);
+      var codeLen = listCodeDigits(fx.items);
+      var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
+      var html = buildListForceHtml(fx.items, fx.forceWord, lastDigits);
       var listNote = findLinkedListNote(fx.id);
       if(listNote){
         listNote.title = fx.title || '';
@@ -1933,11 +1939,11 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     applyFilter('all');
   }
 
-  /* in-app quick trigger: double-tap the tab title to summon the blackout screen */
+  /* double-tap the page title to summon the blackout screen, starting the lock flow */
   attachDoubleTap(document.getElementById('pageTitle'), function(){
     if(editor.classList.contains('open')) closeEditor();
     closePopovers();
-    enterLockFlow('quick');
+    enterLockFlow();
   });
 
   /* ---------------- theme toggle (dark / light / system) ---------------- */
@@ -2022,7 +2028,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   })();
   render();
   applyLockBackground();
-  enterLockFlow('cold');
 })();
 </script>
 <script>
