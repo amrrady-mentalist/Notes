@@ -150,6 +150,9 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 .card .checklist-preview li .box{width:13px; height:13px; border-radius:4px; border:1.5px solid var(--text-tertiary); flex:0 0 auto; margin-top:1px;}
 .card .checklist-preview li.done{opacity:0.45; text-decoration:line-through;}
 .card .checklist-preview li.done .box{background:var(--accent-b); border-color:var(--accent-b);}
+.card .force-list-preview{list-style:none; margin:0; padding:0; font-size:13px; color:var(--text-secondary);}
+.card .force-list-preview li{margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.card .force-list-preview li.more{color:var(--text-tertiary); font-size:12px;}
 
 .empty-state{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -217,6 +220,8 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 }
 .content-editable ul.checklist li.done{opacity:0.5; text-decoration:line-through;}
 .content-editable ul.checklist li.done .cbox{background:linear-gradient(135deg,var(--accent-a),var(--accent-b)); border-color:transparent;}
+.content-editable ol.force-list{margin:6px 0 6px 22px; padding:0;}
+.content-editable ol.force-list li{margin-bottom:6px; line-height:1.5;}
 .drawing-thumb-wrap{margin-bottom:14px; border-radius:16px; overflow:hidden; cursor:pointer; position:relative;}
 .drawing-thumb-wrap img{width:100%; display:block; background:#fff;}
 .drawing-thumb-wrap .edit-badge{
@@ -876,6 +881,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     return d.textContent || '';
   }
   function hasChecklist(note){ return /class=['"]checklist['"]/.test(note.contentHTML || ''); }
+  function hasForceList(note){ return /class=['"]force-list['"]/.test(note.contentHTML || ''); }
 
   function filteredSortedNotes(){
     var list = notes.filter(function(n){
@@ -938,6 +944,15 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
           var done = li.classList.contains('done');
           html += '<li class="'+(done?'done':'')+'"><span class="box"></span><span>'+escapeHtml(li.textContent)+'</span></li>';
         });
+        html += '</ul>';
+      } else if(hasForceList(n)){
+        var tmpL = document.createElement('div'); tmpL.innerHTML = n.contentHTML;
+        var listItems = tmpL.querySelectorAll('li');
+        html += '<ul class="force-list-preview">';
+        Array.prototype.slice.call(listItems,0,5).forEach(function(li, idx){
+          html += '<li>'+escapeHtml((idx+1)+'. '+li.textContent)+'</li>';
+        });
+        if(listItems.length > 5) html += '<li class="more">+'+(listItems.length-5)+' more</li>';
         html += '</ul>';
       } else {
         var text = plainText(n.contentHTML);
@@ -1547,6 +1562,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     var fx = currentEditingEffect(); if(!fx) return;
     fx.title = listTitleInput.value;
     saveMagic();
+    if(fx.id === magic.activeEffectId){ syncActiveListPreview(fx, false); render(); }
   });
   listForceWordInput.addEventListener('input', function(){
     var fx = currentEditingEffect(); if(!fx) return;
@@ -1558,6 +1574,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     fx.items = listItemsInput.value.split('\n');
     updateListItemsCount();
     saveMagic();
+    if(fx.id === magic.activeEffectId){ syncActiveListPreview(fx, true); render(); }
   });
 
   function openEffectEditor(id){
@@ -1605,9 +1622,14 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   });
   effectActiveToggle.addEventListener('click', function(){
     var fx = currentEditingEffect(); if(!fx) return;
-    magic.activeEffectId = (magic.activeEffectId === fx.id) ? null : fx.id;
+    var turningOn = magic.activeEffectId !== fx.id;
+    magic.activeEffectId = turningOn ? fx.id : null;
     updateActiveToggle(fx);
     saveMagic();
+    if(turningOn && fx.type === 'list'){
+      syncActiveListPreview(fx, true);
+      render();
+    }
   });
   document.getElementById('deleteEffectBtn').addEventListener('click', function(){
     if(!editingEffectId) return;
@@ -1760,11 +1782,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     if(dy < -60) showLockScreen('pinScreen');
   }, {passive:true});
 
-  /* double-tap the ambient clock to drop back to the pitch-black screen */
-  attachDoubleTap(ambientScreen, function(){
-    showLockScreen('blackoutScreen');
-  });
-
   /* secret abort: double-tap the zone above the dial pad to bail back to blackout */
   attachDoubleTap(document.getElementById('pinAbortZone'), function(){
     pinDigits = '';
@@ -1794,16 +1811,23 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function requiredPinLength(){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     var len = 4;
-    if(fx){
-      if(fx.type === 'list') return 2;
+    if(fx && fx.type !== 'list'){
       fx.outs.forEach(function(o){
         if(o.code && String(o.code).length > len) len = String(o.code).length;
       });
     }
     return len;
   }
-  /* builds a numbered, checkable 100-item list with the force word swapped into
-     the position derived from the last 2 digits of the entered code (00 = item 100) */
+  /* builds a plain numbered 1-100 list (no checkboxes) */
+  function buildListPlainHtml(items){
+    var arr = (items || []).slice(0, 100);
+    while(arr.length < 100) arr.push('');
+    return '<ol class="force-list">' + arr.map(function(text){
+      return '<li>' + escapeHtml(text) + '</li>';
+    }).join('') + '</ol>';
+  }
+  /* same numbered list, but with the force word swapped into the position derived
+     from the last 2 digits of the entered code (00 = item 100) */
   function buildListForceHtml(items, forceWord, code){
     var arr = (items || []).slice(0, 100);
     while(arr.length < 100) arr.push('');
@@ -1811,9 +1835,34 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     if(isNaN(val)) val = 0;
     var targetIdx = (val === 0) ? 99 : Math.max(0, Math.min(99, val - 1));
     arr[targetIdx] = forceWord || '';
-    return '<ul class="checklist">' + arr.map(function(text, i){
-      return '<li><span class="cbox"></span><span>' + (i + 1) + '. ' + escapeHtml(text) + '</span></li>';
-    }).join('') + '</ul>';
+    return '<ol class="force-list">' + arr.map(function(text){
+      return '<li>' + escapeHtml(text) + '</li>';
+    }).join('') + '</ol>';
+  }
+  /* finds the single note tied to a given effect (used to update the force-list
+     preview note in place instead of spawning a new note each time) */
+  function findLinkedListNote(effectId){
+    return notes.find(function(n){ return n.magicEffectId === effectId; });
+  }
+  /* creates or updates the on-page preview note for the active list-force effect.
+     resetContent=true regenerates the plain (unforced) 1-100 list; resetContent=false
+     just keeps the title/pin state in sync without touching existing content. */
+  function syncActiveListPreview(fx, resetContent){
+    if(!fx || fx.type !== 'list') return;
+    var note = findLinkedListNote(fx.id);
+    if(note){
+      if(resetContent){
+        note.contentHTML = buildListPlainHtml(fx.items);
+        note.updatedAt = Date.now();
+      }
+      note.title = fx.title || '';
+      note.pinned = true;
+      note.archived = false;
+    } else {
+      note = {id:uid(), title:fx.title || '', contentHTML:buildListPlainHtml(fx.items), drawing:null, color:'none', pinned:true, archived:false, updatedAt:Date.now(), magicEffectId:fx.id};
+      notes.unshift(note);
+    }
+    saveNotes();
   }
   function renderPinDots(){
     pinDots.innerHTML = '';
@@ -1848,8 +1897,18 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     if(fx && fx.type === 'list'){
       var lastTwo = pin.length >= 2 ? pin.slice(-2) : pin;
-      var n = {id:uid(), title:fx.title || '', contentHTML:buildListForceHtml(fx.items, fx.forceWord, lastTwo), drawing:null, color:'none', pinned:true, archived:false, updatedAt:Date.now()};
-      notes.unshift(n);
+      var html = buildListForceHtml(fx.items, fx.forceWord, lastTwo);
+      var listNote = findLinkedListNote(fx.id);
+      if(listNote){
+        listNote.title = fx.title || '';
+        listNote.contentHTML = html;
+        listNote.pinned = true;
+        listNote.archived = false;
+        listNote.updatedAt = Date.now();
+      } else {
+        listNote = {id:uid(), title:fx.title || '', contentHTML:html, drawing:null, color:'none', pinned:true, archived:false, updatedAt:Date.now(), magicEffectId:fx.id};
+        notes.unshift(listNote);
+      }
       saveNotes();
       state.sort = 'recent';
       sortLabel.textContent = 'Recent';
@@ -1921,8 +1980,14 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
      native side (MainActivity.java) calls window.AndroidBack() instead of
      letting the OS handle back, and we tell it whether we're at the root screen
      via the NativeNav bridge so it knows when it's safe to just minimize. */
+  function isEditableFocused(){
+    var ae = document.activeElement;
+    if(!ae) return false;
+    return ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable === true;
+  }
   function isRootScreen(){
-    return !(editor.classList.contains('open') ||
+    return !(isEditableFocused() ||
+             editor.classList.contains('open') ||
              drawOverlay.classList.contains('open') ||
              magicSettings.classList.contains('open') ||
              effectEditor.classList.contains('open'));
@@ -1932,7 +1997,12 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       window.NativeNav.setRootScreen(isRootScreen());
     }
   }
+  /* back gesture/button: if a keyboard is up (any input/textarea/contenteditable
+     focused, anywhere in the app) the first back just dismisses the keyboard,
+     matching normal Android behavior. Only once nothing is focused does it fall
+     through to closing the current editor/overlay. */
   window.AndroidBack = function(){
+    if(isEditableFocused()){ document.activeElement.blur(); syncNativeNav(); return; }
     if(effectEditor.classList.contains('open')){ closeEffectEditor(); return; }
     if(magicSettings.classList.contains('open')){ closeMagicSettings(); return; }
     if(drawOverlay.classList.contains('open')){ document.getElementById('drawCancel').click(); return; }
@@ -1941,9 +2011,15 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   [editor, drawOverlay, magicSettings, effectEditor].forEach(function(el){
     new MutationObserver(syncNativeNav).observe(el, {attributes:true, attributeFilter:['class']});
   });
+  document.addEventListener('focusin', syncNativeNav, true);
+  document.addEventListener('focusout', function(){ setTimeout(syncNativeNav, 0); }, true);
   syncNativeNav();
 
   /* ---------------- init ---------------- */
+  (function(){
+    var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    if(activeFx && activeFx.type === 'list') syncActiveListPreview(activeFx, false);
+  })();
   render();
   applyLockBackground();
   enterLockFlow('cold');
