@@ -41,6 +41,23 @@ jobs:
           done
           rm -rf android/app/src/main/res/mipmap-anydpi-v26
 
+      - name: Replace splash screen with one matching our icon
+        run: |
+          GLYPH=www/icons/icon-512.png
+          # regenerate every splash.png the default Capacitor template ships (across
+          # all density/orientation drawable folders) at its own existing resolution,
+          # so the splash always matches whatever sizes the template expects.
+          find android/app/src/main/res -type f -name 'splash.png' | while read -r f; do
+            dims=$(identify -format '%wx%h' "$f")
+            w=${dims%x*}
+            h=${dims#*x}
+            short=$(( w < h ? w : h ))
+            glyph_size=$(( short * 55 / 100 ))
+            convert -size "${w}x${h}" xc:black \
+              \( "$GLYPH" -resize ${glyph_size}x${glyph_size} \) \
+              -gravity center -composite "$f"
+          done
+
       - name: Inject immersive-mode MainActivity
         run: |
           mkdir -p android/app/src/main/java/com/notesapp/offline
