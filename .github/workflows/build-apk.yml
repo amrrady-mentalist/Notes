@@ -44,15 +44,25 @@ jobs:
             convert "$LEGACY" -resize ${size}x${size} "$dir/ic_launcher_round.png"
           done
 
-          # Adaptive icon layers (Android 8+), shipped as `drawable` (not `mipmap`) so
-          # the day/night resource qualifier can swap background+foreground based on
-          # system light/dark theme, on top of Android 13+ wallpaper-tinted monochrome.
-          mkdir -p $RES/drawable-xxxhdpi $RES/drawable-night-xxxhdpi
-          convert www/icons/icon-background-light.png -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_background.png
-          convert www/icons/icon-foreground-light.png  -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_foreground.png
-          convert www/icons/icon-background-dark.png   -resize 432x432 $RES/drawable-night-xxxhdpi/ic_launcher_background.png
-          convert www/icons/icon-foreground-dark.png   -resize 432x432 $RES/drawable-night-xxxhdpi/ic_launcher_foreground.png
-          convert www/icons/icon-monochrome.png        -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_monochrome.png
+          # IMPORTANT: delete the template's own placeholder background/foreground
+          # (an unqualified resource like res/drawable/ic_launcher_foreground.xml is
+          # treated by Android as a perfect density match, so it can silently outrank
+          # a density-qualified replacement -- this is why "light mode" was showing
+          # the stock Android robot instead of our icon). Wipe every copy of it,
+          # across every folder the template might have put it in.
+          find $RES -maxdepth 1 -type d \( -name 'drawable*' -o -name 'mipmap-anydpi*' \) | while read -r d; do
+            rm -f "$d"/ic_launcher_background.* "$d"/ic_launcher_foreground.* "$d"/ic_launcher_monochrome.*
+          done
+
+          # Adaptive icon layers (Android 8+), shipped as plain `drawable` (day) and
+          # `drawable-night` (night) -- no density qualifier, so there is exactly one
+          # competing resource per config and ours always wins.
+          mkdir -p $RES/drawable $RES/drawable-night
+          convert www/icons/icon-background-light.png -resize 432x432 $RES/drawable/ic_launcher_background.png
+          convert www/icons/icon-foreground-light.png  -resize 432x432 $RES/drawable/ic_launcher_foreground.png
+          convert www/icons/icon-background-dark.png   -resize 432x432 $RES/drawable-night/ic_launcher_background.png
+          convert www/icons/icon-foreground-dark.png   -resize 432x432 $RES/drawable-night/ic_launcher_foreground.png
+          convert www/icons/icon-monochrome.png        -resize 432x432 $RES/drawable/ic_launcher_monochrome.png
 
           # Adaptive icon XML: composes the layers above; `monochrome` is what Android
           # 13+ uses for themed (wallpaper-tinted) icons, `background`/`foreground`
@@ -70,23 +80,83 @@ jobs:
           EOF
           done
 
-      - name: Replace splash screen with light/dark variants matching the icon
+      - name: Wire up the real Android 12+ splash screen (light/dark) + legacy fallback
         run: |
           set -e
-          LIGHT=www/icons/splash-light.png
-          DARK=www/icons/splash-dark.png
-          # Regenerate every splash.png the default Capacitor template ships (across
-          # all density/orientation drawable folders) at its own existing resolution,
-          # and mirror each one into a `-night-` qualified folder with the dark
-          # variant, so the splash follows the system light/dark theme automatically.
-          mapfile -t splash_files < <(find android/app/src/main/res -type f -name 'splash.png')
+          RES=android/app/src/main/res
+
+          # Dedicated splash icon drawables (day + night), used by the modern
+          # androidx SplashScreen API via windowSplashScreenAnimatedIcon below.
+          mkdir -p $RES/drawable $RES/drawable-night
+          convert www/icons/splash-light.png -resize 720x720 $RES/drawable/ic_launcher_splash_icon.png
+          convert www/icons/splash-dark.png  -resize 720x720 $RES/drawable-night/ic_launcher_splash_icon.png
+
+          # Background colors to go with them.
+          mkdir -p $RES/values $RES/values-night
+          LIGHT_HEX=$(convert www/icons/splash-light.png -format "%[pixel:p{2,2}]" info: | sed -E 's/srgba?\(([0-9]+),([0-9]+),([0-9]+).*/printf "#%02x%02x%02x" \1 \2 \3/e')
+          DARK_HEX=$(convert www/icons/splash-dark.png -format "%[pixel:p{2,2}]" info: | sed -E 's/srgba?\(([0-9]+),([0-9]+),([0-9]+).*/printf "#%02x%02x%02x" \1 \2 \3/e')
+          LIGHT_HEX=${LIGHT_HEX:-#EDECE9}
+          DARK_HEX=${DARK_HEX:-#121216}
+
+          python3 - "$LIGHT_HEX" "$DARK_HEX" <<'PY'
+          import re, sys, glob, os
+
+          light_hex, dark_hex = sys.argv[1], sys.argv[2]
+          res = "android/app/src/main/res"
+
+          def upsert_color(path, name, value):
+              os.makedirs(os.path.dirname(path), exist_ok=True)
+              if os.path.exists(path):
+                  content = open(path).read()
+              else:
+                  content = "<resources>\n</resources>\n"
+              tag = f'<color name="{name}">{value}</color>'
+              if f'name="{name}"' in content:
+                  content = re.sub(rf'<color name="{name}">.*?</color>', tag, content)
+              else:
+                  content = content.replace("</resources>", f"    {tag}\n</resources>")
+              open(path, "w").write(content)
+
+          upsert_color(f"{res}/values/colors.xml", "splashBackground", light_hex)
+          upsert_color(f"{res}/values-night/colors.xml", "splashBackground", dark_hex)
+
+          # Find the launch theme (parent Theme.SplashScreen, or name containing
+          # "Launch") in any values*/styles.xml or themes.xml and point its splash
+          # attributes at our new drawable + color.
+          candidates = glob.glob(f"{res}/values/styles.xml") + glob.glob(f"{res}/values/themes.xml") \
+              + glob.glob(f"{res}/values-*/styles.xml") + glob.glob(f"{res}/values-*/themes.xml")
+
+          patched = False
+          for path in candidates:
+              content = open(path).read()
+              if "Theme.SplashScreen" not in content and "Launch" not in content:
+                  continue
+
+              def set_item(name, value, c=content):
+                  pattern = rf'<item name="{name}">.*?</item>'
+                  tag = f'<item name="{name}">{value}</item>'
+                  if re.search(pattern, c):
+                      return re.sub(pattern, tag, c)
+                  return re.sub(r'(<style[^>]*Launch[^>]*>)', rf'\1\n        {tag}', c, count=1)
+
+              content = set_item("windowSplashScreenBackground", "@color/splashBackground", content)
+              content = set_item("windowSplashScreenAnimatedIcon", "@drawable/ic_launcher_splash_icon", content)
+              open(path, "w").write(content)
+              patched = True
+
+          if not patched:
+              print("WARNING: no splash theme found to patch -- check res/values/styles.xml manually")
+          PY
+
+          # Legacy fallback: pre-Android 12 devices (and the old cordova-style
+          # static splash bitmap some templates still ship) use plain splash.png
+          # files under res/drawable*/. Regenerate every one we find, day + night.
+          mapfile -t splash_files < <(find $RES -type f -name 'splash.png')
           for f in "${splash_files[@]}"; do
             dims=$(identify -format '%wx%h' "$f")
             dir=$(dirname "$f")
             base=$(basename "$dir")
 
-            # insert a "night" qualifier in the right position (after orientation,
-            # before density) e.g. drawable-port-mdpi -> drawable-port-night-mdpi
             if [[ "$base" == drawable-port-* || "$base" == drawable-land-* ]]; then
               night_base=${base/-port-/-port-night-}
               night_base=${night_base/-land-/-land-night-}
@@ -98,8 +168,8 @@ jobs:
             night_dir=$(dirname "$dir")/$night_base
             mkdir -p "$night_dir"
 
-            convert "$LIGHT" -resize "${dims}^" -gravity center -extent "$dims" "$f"
-            convert "$DARK"  -resize "${dims}^" -gravity center -extent "$dims" "$night_dir/splash.png"
+            convert www/icons/splash-light.png -resize "${dims}^" -gravity center -extent "$dims" "$f"
+            convert www/icons/splash-dark.png  -resize "${dims}^" -gravity center -extent "$dims" "$night_dir/splash.png"
           done
 
       - name: Inject immersive-mode MainActivity
