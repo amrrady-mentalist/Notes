@@ -24,14 +24,6 @@ jobs:
       - name: Copy web assets
         run: npx cap copy android
 
-      - name: Ensure core-splashscreen dependency is present
-        run: |
-          set -e
-          GRADLE=android/app/build.gradle
-          if ! grep -q "core-splashscreen" "$GRADLE"; then
-            sed -i "/dependencies[[:space:]]*{/a\\    implementation \"androidx.core:core-splashscreen:1.0.1\"" "$GRADLE"
-          fi
-
       - name: Install ImageMagick
         run: sudo apt-get update && sudo apt-get install -y imagemagick
 
