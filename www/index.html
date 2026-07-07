@@ -12,7 +12,11 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Notes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<!-- loaded as "print" media so it can never block first paint; swaps to "all"
+     once it finishes loading. If there's no connection it just never swaps and
+     the fallback fonts below (already the same metrics-safe stack) stay put --
+     no delay, no flash, no waiting on a network request that may never resolve. -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Bebas+Neue&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{
   --bg-void:#000000;
@@ -87,6 +91,13 @@ input, textarea, [contenteditable]{-webkit-user-select:text; user-select:text;}
   position:absolute; inset:0; border-radius:inherit; pointer-events:none;
   background:linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 40%);
 }
+/* Note cards reuse the .glass look but are the one place it appears in large,
+   scrolling, frequently-animated quantities. A live backdrop-filter blur is
+   recomputed every frame for every card on screen, which is what made tab
+   switches and scrolling feel heavy/janky. The notes grid only ever sits over
+   a flat background color, so the blur was never visibly doing anything here
+   -- turning it off keeps an identical look for a fraction of the GPU cost. */
+.card.glass{backdrop-filter:none; -webkit-backdrop-filter:none;}
 
 /* ---------- header ---------- */
 header{
@@ -266,7 +277,7 @@ body.light .popover{
 .pop-item{display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:12px; font-size:14px; cursor:pointer;}
 .pop-item:active{background:var(--glass-fill-strong);}
 .pop-item.danger{color:var(--danger);}
-.pop-items{display:flex; gap:8px; padding:8px 12px;}
+.pop-swatches{display:flex; gap:8px; padding:8px 12px;}
 
 .scrim{
   position:fixed; inset:0; z-index:45; background:rgba(0,0,0,0.35); opacity:0; pointer-events:none; transition:opacity .18s;
@@ -552,7 +563,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 001 1h12a1 1 0 001-1V8M10 13h4"/></svg>
     <span id="archiveLabel">Archive</span>
   </div>
-  <div class="pop-items" id="popSwatches"></div>
+  <div class="pop-swatches" id="popSwatches"></div>
   <div class="pop-item danger" data-act="delete">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6"/></svg>
     <span>Delete</span>
@@ -1396,8 +1407,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function applyLockBackground(){
     var scrimAmbient = "linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.6))";
     var scrimPin = "linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 32%, rgba(0,0,0,0.75))";
-    var ambientScreen = document.getElementById('ambientScreen');
-    var pinScreen = document.getElementById('pinScreen');
     if(magic.lockBackground){
       ambientScreen.style.backgroundImage = scrimAmbient + ", url('" + magic.lockBackground + "')";
       ambientScreen.style.backgroundSize = 'cover';
@@ -1611,318 +1620,446 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       render();
     }
   });
-
   document.getElementById('deleteEffectBtn').addEventListener('click', function(){
-    if(!confirm('Delete this entire effect?')) return;
+    if(!editingEffectId) return;
     magic.effects = magic.effects.filter(function(x){ return x.id !== editingEffectId; });
     if(magic.activeEffectId === editingEffectId) magic.activeEffectId = null;
     saveMagic();
     closeEffectEditor();
   });
 
-  document.getElementById('addOutBtn').addEventListener('click', function(){
-    var fx = currentEditingEffect(); if(!fx) return;
-    if(!fx.outs) fx.outs = [];
-    fx.outs.push({id:uid(), code:'', word:'', drawing:null});
-    saveMagic();
-    renderOutsList(fx);
-  });
-
+  var pencilIconSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>';
   function renderOutsList(fx){
     outsListEl.innerHTML = '';
-    if(!fx.outs || !fx.outs.length) return;
     fx.outs.forEach(function(out){
+      if(!out.id) out.id = uid();
       var row = document.createElement('div');
       row.className = 'out-row';
-      row.innerHTML = 
+      row.innerHTML =
         '<div class="out-row-fields">' +
-          '<input class="out-code" value="'+escapeHtml(out.code)+'" placeholder="PIN">' +
-          '<span class="out-arrow">&rarr;</span>' +
-          '<input class="out-word" value="'+escapeHtml(out.word)+'" placeholder="Word output">' +
-          '<div class="out-remove">&times;</div>' +
+          '<input class="out-code" inputmode="numeric" placeholder="Code">' +
+          '<span class="out-arrow">\u2192</span>' +
+          '<input class="out-word" placeholder="Word (optional)">' +
+          '<div class="out-remove">\u00d7</div>' +
         '</div>' +
         '<div class="out-sketch-row">' +
-          '<div class="out-sketch-thumb"></div>' +
-          '<span class="out-sketch-btn">Attach Sketch</span>' +
-          '<span class="out-sketch-clear" style="display:'+(out.drawing?'block':'none')+'">Clear</span>' +
+          '<div class="out-sketch-thumb">' + (out.drawing ? '<img src="'+out.drawing+'">' : pencilIconSvg) + '</div>' +
+          '<div class="out-sketch-btn">' + (out.drawing ? 'Edit sketch' : 'Add sketch') + '</div>' +
+          (out.drawing ? '<div class="out-sketch-clear">Remove sketch</div>' : '') +
         '</div>';
-
-      var codeIn = row.querySelector('.out-code');
-      var wordIn = row.querySelector('.out-word');
-      var thumb = row.querySelector('.out-sketch-thumb');
-      var sketchBtn = row.querySelector('.out-sketch-btn');
-      var sketchClear = row.querySelector('.out-sketch-clear');
-
-      codeIn.addEventListener('input', function(){ out.code = codeIn.value.trim(); saveMagic(); });
-      wordIn.addEventListener('input', function(){ out.word = wordIn.value; saveMagic(); });
+      var codeInput = row.querySelector('.out-code');
+      var wordInput = row.querySelector('.out-word');
+      codeInput.value = out.code;
+      wordInput.value = out.word;
+      codeInput.addEventListener('input', function(){
+        out.code = codeInput.value.replace(/[^0-9]/g,'');
+        if(codeInput.value !== out.code) codeInput.value = out.code;
+        saveMagic();
+      });
+      wordInput.addEventListener('input', function(){
+        out.word = wordInput.value;
+        saveMagic();
+      });
       row.querySelector('.out-remove').addEventListener('click', function(){
-        fx.outs = fx.outs.filter(function(x){ return x.id !== out.id; });
-        saveMagic(); renderOutsList(fx);
+        fx.outs = fx.outs.filter(function(o){ return o !== out; });
+        renderOutsList(fx);
+        saveMagic();
       });
-
-      thumb.innerHTML = out.drawing ? '<img src="'+out.drawing+'">' : photoPlaceholderSvg;
-      sketchBtn.textContent = out.drawing ? 'Edit Sketch' : 'Attach Sketch';
-      sketchBtn.addEventListener('click', function(){ openDrawing({type:'out', effectId:fx.id, outId:out.id}); });
-      sketchClear.addEventListener('click', function(){
-        out.drawing = null; saveMagic(); renderOutsList(fx);
+      row.querySelector('.out-sketch-btn').addEventListener('click', function(){
+        openDrawing({type:'out', effectId:fx.id, outId:out.id});
       });
+      var clearBtn = row.querySelector('.out-sketch-clear');
+      if(clearBtn){
+        clearBtn.addEventListener('click', function(){
+          out.drawing = null;
+          renderOutsList(fx);
+          saveMagic();
+        });
+      }
       outsListEl.appendChild(row);
     });
   }
+  document.getElementById('addOutBtn').addEventListener('click', function(){
+    var fx = currentEditingEffect(); if(!fx) return;
+    fx.outs.push({id:uid(), code:'', word:'', drawing:null});
+    renderOutsList(fx);
+    saveMagic();
+  });
 
-  function syncActiveListPreview(fx, rebuildHtml){
-    var targetNote = notes.find(function(n){ return n.id === 'magic-force-list-note'; });
-    var validItems = (fx.items || []).filter(function(l){ return l.trim() !== ''; });
-    if(!validItems.length) {
-      if(targetNote) { notes = notes.filter(function(n){ return n.id !== targetNote.id; }); saveNotes(); }
-      return;
-    }
-    if(!targetNote){
-      targetNote = {id:'magic-force-list-note', title:'', contentHTML:'', drawing:null, color:'none', pinned:true, archived:false, updatedAt:Date.now()};
-      notes.unshift(targetNote);
-    }
-    targetNote.title = fx.title || 'List';
-    if(rebuildHtml || !targetNote.contentHTML) {
-      var html = '<ol class="force-list">';
-      validItems.forEach(function(it){ html += '<li>' + escapeHtml(it) + '</li>'; });
-      html += '</ol>';
-      targetNote.contentHTML = html;
-    }
-    targetNote.updatedAt = Date.now();
-    saveNotes();
-  }
-
-  /* ---------------- hidden lock triggers & flow ---------------- */
-  var themeToggle = document.getElementById('themeToggle');
+  /* ---------------- magic lock flow: blackout / ambient / pin ---------------- */
   var lockFlow = document.getElementById('lockFlow');
+
+  /* immersive fullscreen: hides the browser chrome (address bar / nav bar) so the
+     blackout / ambient / pin screens bleed edge-to-edge like a real lock screen.
+     Fullscreen requires a user gesture, so it's requested on the first tap inside
+     the lock flow rather than on load. */
+  function requestImmersiveFullscreen(){
+    if(document.fullscreenElement || document.webkitFullscreenElement) return;
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if(req){ try{ req.call(el); }catch(e){} }
+  }
+  lockFlow.addEventListener('touchstart', requestImmersiveFullscreen, {passive:true});
+  lockFlow.addEventListener('click', requestImmersiveFullscreen);
   var blackoutScreen = document.getElementById('blackoutScreen');
   var ambientScreen = document.getElementById('ambientScreen');
   var pinScreen = document.getElementById('pinScreen');
-  var ambientTime = document.getElementById('ambientTime');
-  var ambientDate = document.getElementById('ambientDate');
   var pinDots = document.getElementById('pinDots');
   var pinKeypad = document.getElementById('pinKeypad');
+  var ambientTimeEl = document.getElementById('ambientTime');
+  var ambientDateEl = document.getElementById('ambientDate');
 
-  var currentPin = "";
-  var lastFocusTime = Date.now();
+  var pinDigits = '';
+  var clockTimer = null;
 
-  function triggerLockScreen(){
-    if(!magic.activeEffectId) return;
-    currentPin = "";
-    updatePinDots();
-    applyLockBackground();
-    updateAmbientTime();
-    
-    blackoutScreen.classList.add('active');
-    ambientScreen.classList.remove('active');
-    pinScreen.classList.remove('active');
-    lockFlow.classList.add('open');
-    if(window.NativeNav) window.NativeNav.setRootScreen(false);
-
-    setTimeout(function(){
-      blackoutScreen.classList.remove('active');
-      ambientScreen.classList.add('active');
-    }, 400);
-  }
-
-  // Intercept system window focus to dynamic mask launch
-  window.addEventListener('focus', function(){
-    if(Date.now() - lastFocusTime > 4000 && magic.activeEffectId) {
-      triggerLockScreen();
-    }
-    lastFocusTime = Date.now();
-  });
-  window.addEventListener('blur', function(){ lastFocusTime = Date.now(); });
-
-  // Native hardware back button binding hooks
-  window.AndroidBack = function(){
-    if(lockFlow.classList.contains('open')){
-      if(pinScreen.classList.contains('active')){
-        pinScreen.classList.remove('active');
-        ambientScreen.classList.add('active');
-        currentPin = "";
-        updatePinDots();
-      } else {
-        // Stay locked on back inside lockscreen ambient loop
-      }
-    } else if(editor.classList.contains('open')){
-      closeEditor();
-    } else if(effectEditor.classList.contains('open')){
-      closeEffectEditor();
-    } else if(magicSettings.classList.contains('open')){
-      closeMagicSettings();
-    } else if(drawOverlay.classList.contains('open')){
-      drawOverlay.classList.remove('open');
-    }
-  };
-
-  // Swipe gesture transition to pin pad screen
-  var touchStartY = 0;
-  ambientScreen.addEventListener('touchstart', function(e){ touchStartY = e.touches[0].clientY; });
-  ambientScreen.addEventListener('touchend', function(e){
-    if(touchStartY - e.changedTouches[0].clientY > 50){
-      ambientScreen.classList.remove('active');
-      pinScreen.classList.add('active');
-    }
-  });
-  ambientScreen.addEventListener('click', function(){
-    ambientScreen.classList.remove('active');
-    pinScreen.classList.add('active');
-  });
-
-  function updateAmbientTime(){
+  function pad2(n){ return n < 10 ? '0'+n : ''+n; }
+  function updateClocks(){
     var d = new Date();
-    var h = String(d.getHours()).padStart(2, '0');
-    var m = String(d.getMinutes()).padStart(2, '0');
-    ambientTime.textContent = h + ":" + m;
-    ambientDate.textContent = d.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
+    var t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    ambientTimeEl.textContent = t;
+    ambientDateEl.textContent = d.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
   }
-  setInterval(updateAmbientTime, 30000);
+  function startClock(){
+    updateClocks();
+    if(clockTimer) clearInterval(clockTimer);
+    clockTimer = setInterval(updateClocks, 15000);
+  }
+  function showLockScreen(id){
+    [blackoutScreen, ambientScreen, pinScreen].forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+  function enterLockFlow(){
+    pinDigits = '';
+    renderPinDots();
+    lockFlow.classList.add('open');
+    startClock();
+    showLockScreen('blackoutScreen');
+  }
+  function exitLockFlow(){
+    lockFlow.classList.remove('open');
+    if(clockTimer){ clearInterval(clockTimer); clockTimer = null; }
+  }
 
-  // Keypad generator matrix layout
-  var keys = ["1","2","3","4","5","6","7","8","9","","0","delete"];
-  keys.forEach(function(k){
-    var btn = document.createElement('button');
+  function attachDoubleTap(el, cb){
+    var lastTap = 0;
+    el.addEventListener('touchend', function(e){
+      var now = Date.now();
+      if(now - lastTap < 320){ lastTap = 0; cb(e); }
+      else { lastTap = now; }
+    });
+    el.addEventListener('dblclick', function(e){ cb(e); });
+  }
+
+  /* double-tap blackout: always wakes to the ambient clock screen */
+  attachDoubleTap(blackoutScreen, function(){
+    showLockScreen('ambientScreen');
+  });
+
+  /* swipe up on ambient clock to reach the PIN screen */
+  var ambStartY = 0, ambDragging = false;
+  ambientScreen.addEventListener('touchstart', function(e){
+    ambStartY = e.touches[0].clientY;
+    ambDragging = true;
+  }, {passive:true});
+  ambientScreen.addEventListener('touchend', function(e){
+    if(!ambDragging) return;
+    ambDragging = false;
+    var dy = e.changedTouches[0].clientY - ambStartY;
+    if(dy < -60) showLockScreen('pinScreen');
+  }, {passive:true});
+
+  /* secret abort: double-tap the zone above the dial pad to bail back to blackout */
+  attachDoubleTap(document.getElementById('pinAbortZone'), function(){
+    pinDigits = '';
+    renderPinDots();
+    showLockScreen('blackoutScreen');
+  });
+
+  var keypadKeys = ['1','2','3','4','5','6','7','8','9','empty','0','delete'];
+  keypadKeys.forEach(function(k){
+    var btn = document.createElement('div');
     btn.className = 'pin-key';
-    if(!k) btn.className += ' empty';
-    if(k === 'delete') {
-      btn.className += ' delete';
-      btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM18 9l-6 6M12 9l6 6"/></svg>';
-    } else if(k) {
+    if(k === 'empty'){
+      btn.classList.add('empty');
+    } else if(k === 'delete'){
+      btn.classList.add('delete');
+      btn.textContent = 'Delete';
+    } else {
       btn.textContent = k;
     }
-    btn.addEventListener('click', function(){ if(k) handlePinInput(k); });
+    btn.addEventListener('click', function(){ handlePinKey(k); });
     pinKeypad.appendChild(btn);
   });
 
-  function handlePinInput(k){
-    if(k === 'delete'){
-      if(currentPin.length > 0) currentPin = currentPin.slice(0, -1);
-    } else {
-      if(currentPin.length < 12) currentPin += k;
+  /* number of dot slots shown / digits required before auto-submitting; mirrors the
+     longest configured code for the active effect, defaulting to a standard 4-digit PIN */
+  function requiredPinLength(){
+    var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    var len = 4;
+    if(fx && fx.type !== 'list'){
+      fx.outs.forEach(function(o){
+        if(o.code && String(o.code).length > len) len = String(o.code).length;
+      });
     }
-    updatePinDots();
-    evaluatePinCode();
+    return len;
   }
-
-  function updatePinDots(){
+  /* the list's real, ordered items: blank lines are dropped and the list is capped
+     at 1000 entries. This is the single source of truth for both the on-screen
+     count and the actual list length used for code-decoding. */
+  function listActualItems(items){
+    var arr = (items || []).filter(function(l){ return l && l.trim() !== ''; });
+    if(arr.length > 1000) arr = arr.slice(0, 1000);
+    return arr;
+  }
+  /* lists of 100 items or fewer are addressed with a 2-digit code (00-99);
+     larger lists (up to 1000) need a 3-digit code (000-999) */
+  function listCodeDigits(items){
+    return listActualItems(items).length > 100 ? 3 : 2;
+  }
+  /* builds a plain numbered list (no checkboxes), sized to exactly however many
+     real items were entered - it never pads out to 100 and never truncates at 100 */
+  function buildListPlainHtml(items){
+    var arr = listActualItems(items);
+    return '<ol class="force-list">' + arr.map(function(text){
+      return '<li>' + escapeHtml(text) + '</li>';
+    }).join('') + '</ol>';
+  }
+  /* moves the force item (which must match one of the list's own items verbatim)
+     to the position derived from the entered code, instead of overwriting whatever
+     was already in that slot. The rest of the list keeps its relative order. Code
+     length auto-scales with list size: 2 digits for <=100 items (00 = last item),
+     3 digits for 101-1000 items (000 = last item). If the code points past the
+     list's actual length it wraps around, so every code always lands somewhere. */
+  function buildListForceHtml(items, forceWord, code){
+    var arr = listActualItems(items);
+    var n = arr.length;
+    if(n === 0) return buildListPlainHtml(items);
+    var digits = n > 100 ? 3 : 2;
+    var base = digits === 2 ? 100 : 1000;
+    var val = parseInt(code, 10);
+    if(isNaN(val)) val = 0;
+    var effectiveVal = (val === 0) ? base : val;
+    var targetPos = ((effectiveVal - 1) % n) + 1; /* 1-based position in the final list */
+    var fw = (forceWord || '').trim();
+    var idx = -1;
+    if(fw){
+      for(var i=0;i<arr.length;i++){
+        if(arr[i].trim() === fw){ idx = i; break; }
+      }
+    }
+    if(idx > -1){
+      arr.splice(idx, 1);
+      arr.splice(Math.min(targetPos - 1, arr.length), 0, fw);
+    }
+    return '<ol class="force-list">' + arr.map(function(text){
+      return '<li>' + escapeHtml(text) + '</li>';
+    }).join('') + '</ol>';
+  }
+  /* finds the single note tied to a given effect (used to update the force-list
+     preview note in place instead of spawning a new note each time) */
+  function findLinkedListNote(effectId){
+    return notes.find(function(n){ return n.magicEffectId === effectId; });
+  }
+  /* creates or updates the on-page preview note for the active list-force effect.
+     resetContent=true regenerates the plain (unforced) 1-100 list; resetContent=false
+     just keeps the title/pin state in sync without touching existing content. */
+  function syncActiveListPreview(fx, resetContent){
+    if(!fx || fx.type !== 'list') return;
+    var note = findLinkedListNote(fx.id);
+    if(note){
+      if(resetContent){
+        note.contentHTML = buildListPlainHtml(fx.items);
+        note.updatedAt = Date.now();
+      }
+      note.title = fx.title || '';
+      note.pinned = true;
+      note.archived = false;
+    } else {
+      note = {id:uid(), title:fx.title || '', contentHTML:buildListPlainHtml(fx.items), drawing:null, color:'none', pinned:true, archived:false, updatedAt:Date.now(), magicEffectId:fx.id};
+      notes.unshift(note);
+    }
+    saveNotes();
+  }
+  function renderPinDots(){
     pinDots.innerHTML = '';
-    var visualLength = Math.max(4, currentPin.length);
-    for(var i=0; i<visualLength; i++){
+    var total = requiredPinLength();
+    for(var i=0;i<total;i++){
       var dot = document.createElement('div');
-      dot.className = 'pin-dot' + (i < currentPin.length ? ' filled' : '');
+      dot.className = 'pin-dot' + (i < pinDigits.length ? ' filled' : '');
       pinDots.appendChild(dot);
     }
   }
+  function handlePinKey(k){
+    if(k === 'empty') return;
+    if(k === 'delete'){ pinDigits = pinDigits.slice(0,-1); renderPinDots(); return; }
+    if(pinDigits.length >= 16) return;
+    pinDigits += k;
+    renderPinDots();
+    if(pinDigits.length >= requiredPinLength()) resolvePin(pinDigits);
+  }
 
-  function evaluatePinCode(){
+  /* turns an effect body + resolved word into note contentHTML, replacing $$$$ */
+  function buildEffectHtml(body, word){
+    var escapedWord = escapeHtml(word);
+    var lines = (body || '').split('\n');
+    return lines.map(function(line){
+      var escaped = escapeHtml(line).split('$$$$').join(escapedWord);
+      return '<p>' + (escaped || '<br>') + '</p>';
+    }).join('');
+  }
+
+  /* decodes the entered PIN against the active effect's outs and drops the resulting note at the top of the list */
+  function resolvePin(pin){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
-    if(!fx) { unlockSystem(); return; }
-
-    if(fx.type === 'list'){
-      var rawItems = (fx.items || []).filter(function(l){ return l.trim() !== ''; });
-      var n = Math.min(rawItems.length, 1000);
-      var digits = n > 100 ? 3 : 2;
-      if(currentPin.length >= digits + 2){
-        var lastDigits = currentPin.slice(-digits);
-        var targetPos = parseInt(lastDigits, 10);
-        if(!isNaN(targetPos)){
-          var listItems = Array.from(rawItems);
-          var forceWord = (fx.forceWord || "").trim();
-          var itemIdx = listItems.indexOf(forceWord);
-          if(itemIdx > -1) listItems.splice(itemIdx, 1);
-          
-          // 00 or 000 maps to the final element array boundary index
-          var targetIndex = listItems.length - targetPos;
-          if(targetIndex < 0) targetIndex = 0;
-          if(targetIndex > listItems.length) targetIndex = listItems.length;
-          
-          if(forceWord) listItems.splice(targetIndex, 0, forceWord);
-
-          // Update real preview template record structural node directly
-          var note = notes.find(function(n){ return n.id === 'magic-force-list-note'; });
-          if(note){
-            var html = '<ol class="force-list">';
-            listItems.forEach(function(it){ html += '<li>' + escapeHtml(it) + '</li>'; });
-            html += '</ol>';
-            note.contentHTML = html;
-            note.title = fx.title || 'List';
-            note.updatedAt = Date.now();
-            saveNotes();
-          }
-        }
-        unlockSystem();
+    if(fx && fx.type === 'list'){
+      var codeLen = listCodeDigits(fx.items);
+      var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
+      var html = buildListForceHtml(fx.items, fx.forceWord, lastDigits);
+      var listNote = findLinkedListNote(fx.id);
+      if(listNote){
+        listNote.title = fx.title || '';
+        listNote.contentHTML = html;
+        listNote.pinned = true;
+        listNote.archived = false;
+        listNote.updatedAt = Date.now();
+      } else {
+        listNote = {id:uid(), title:fx.title || '', contentHTML:html, drawing:null, color:'none', pinned:true, archived:false, updatedAt:Date.now(), magicEffectId:fx.id};
+        notes.unshift(listNote);
       }
-    } else {
-      // Out mode lookup decode match loop execution
-      if(!fx.outs || !fx.outs.length) return;
-      var matchingOut = fx.outs.find(function(o){ return o.code && o.code === currentPin; });
-      if(matchingOut){
-        // Remove preexisting magic output instance variants
-        notes = notes.filter(function(x){ return x.id !== 'magic-created-note'; });
-        
-        var parsedBody = (fx.body || "").replace(/\$\$\$\$/g, matchingOut.word || "");
-        var newNote = {
-          id: 'magic-created-note',
-          title: fx.title || matchingOut.word || 'Note',
-          contentHTML: '<p>' + escapeHtml(parsedBody).replace(/\n/g, '<br>') + '</p>',
-          drawing: matchingOut.drawing || null,
-          color: 'none',
-          pinned: true,
-          archived: false,
-          updatedAt: Date.now()
-        };
-        notes.unshift(newNote);
-        saveNotes();
-        unlockSystem();
-      }
+      saveNotes();
+      state.sort = 'recent';
+      sortLabel.textContent = 'Recent';
+    } else if(fx){
+      var codeLen = 2;
+      fx.outs.forEach(function(o){
+        if(o.code && String(o.code).length > codeLen) codeLen = String(o.code).length;
+      });
+      var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
+      var target = parseInt(lastDigits, 10);
+      var match = fx.outs.find(function(o){ return o.code !== '' && parseInt(o.code,10) === target; });
+      var word = match ? match.word : '\ud83e\uddd0';
+      var drawing = match ? (match.drawing || null) : null;
+      var n2 = {id:uid(), title:fx.title || '', contentHTML:buildEffectHtml(fx.body, word), drawing:drawing, color:'none', pinned:true, archived:false, updatedAt:Date.now()};
+      notes.unshift(n2);
+      saveNotes();
+      state.sort = 'recent';
+      sortLabel.textContent = 'Recent';
     }
+    pinDigits = '';
+    exitLockFlow();
+    applyFilter('all');
   }
 
-  function unlockSystem(){
-    lockFlow.classList.remove('open');
-    if(window.NativeNav) window.NativeNav.setRootScreen(true);
-    currentPin = "";
-    updatePinDots();
-    render();
-  }
-
-  /* ---------------- light / dark color modes ---------------- */
-  var themeToggleBtn = document.getElementById('themeToggle');
-  var themeIconMoon = document.getElementById('themeIconMoon');
-  var themeIconSun = document.getElementById('themeIconSun');
-
-  function initTheme(){
-    var activeTheme = localStorage.getItem('notes_theme') || 'dark';
-    if(activeTheme === 'light'){
-      document.body.classList.add('light');
-      themeIconMoon.style.display = 'none';
-      themeIconSun.style.display = 'block';
-    } else {
-      document.body.classList.remove('light');
-      themeIconMoon.style.display = 'block';
-      themeIconSun.style.display = 'none';
-    }
-  }
-  themeToggleBtn.addEventListener('click', function(){
-    var isLight = document.body.classList.toggle('light');
-    localStorage.setItem('notes_theme', isLight ? 'light' : 'dark');
-    themeIconMoon.style.display = isLight ? 'none' : 'block';
-    themeIconSun.style.display = isLight ? 'block' : 'none';
+  /* double-tap the page title to summon the blackout screen, starting the lock flow */
+  attachDoubleTap(document.getElementById('pageTitle'), function(){
+    if(editor.classList.contains('open')) closeEditor();
+    closePopovers();
+    enterLockFlow();
   });
 
-  // Long press hidden emergency direct overlay manual shortcut override escape
-  attachLongPress(themeToggleBtn, function(){
-    if(!lockFlow.classList.contains('open')){
-      triggerLockScreen();
-    }
+  /* ---------------- theme toggle (dark / light / system) ---------------- */
+  var themeToggle = document.getElementById('themeToggle');
+  var iconMoon = document.getElementById('themeIconMoon');
+  var iconSun = document.getElementById('themeIconSun');
+  var systemDarkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  var themeMode = 'dark'; // 'dark' | 'light' | 'system'
+  function effectiveIsLight(){
+    if(themeMode === 'system') return systemDarkQuery ? !systemDarkQuery.matches : false;
+    return themeMode === 'light';
+  }
+  function applyTheme(mode){
+    themeMode = mode;
+    var isLight = effectiveIsLight();
+    document.body.classList.toggle('light', isLight);
+    iconMoon.style.display = isLight ? 'none' : 'block';
+    iconSun.style.display = isLight ? 'block' : 'none';
+    themeToggle.classList.toggle('system-mode', mode === 'system');
+    try{ localStorage.setItem('liquidnotes_theme', mode); }catch(e){}
+  }
+  var savedTheme = 'dark';
+  try{ savedTheme = localStorage.getItem('liquidnotes_theme') || 'dark'; }catch(e){}
+  applyTheme(savedTheme);
+  if(systemDarkQuery){
+    var onSystemChange = function(){ if(themeMode === 'system') applyTheme('system'); };
+    if(systemDarkQuery.addEventListener) systemDarkQuery.addEventListener('change', onSystemChange);
+    else if(systemDarkQuery.addListener) systemDarkQuery.addListener(onSystemChange);
+  }
+  /* tap cycles: dark -> light -> system (follows device) -> dark */
+  themeToggle.addEventListener('click', function(){
+    var next = themeMode === 'dark' ? 'light' : (themeMode === 'light' ? 'system' : 'dark');
+    applyTheme(next);
   });
 
-  /* ---------------- application root bootstrap initialization ---------------- */
-  initTheme();
+  /* ---------------- Android hardware/gesture back button bridge ----------------
+     Without this, Android's edge-swipe/back gesture bypasses all our own close
+     logic (closeEditor, closeDrawing, etc.) and either exits the app outright or
+     leaves state half-saved (e.g. an empty note never getting cleaned up). The
+     native side (MainActivity.java) calls window.AndroidBack() instead of
+     letting the OS handle back, and we tell it whether we're at the root screen
+     via the NativeNav bridge so it knows when it's safe to just minimize. */
+  function isEditableFocused(){
+    var ae = document.activeElement;
+    if(!ae) return false;
+    return ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable === true;
+  }
+  function isRootScreen(){
+    return !(isEditableFocused() ||
+             editor.classList.contains('open') ||
+             drawOverlay.classList.contains('open') ||
+             magicSettings.classList.contains('open') ||
+             effectEditor.classList.contains('open'));
+  }
+  function syncNativeNav(){
+    if(window.NativeNav && window.NativeNav.setRootScreen){
+      window.NativeNav.setRootScreen(isRootScreen());
+    }
+  }
+  /* back gesture/button: if a keyboard is up (any input/textarea/contenteditable
+     focused, anywhere in the app) the first back just dismisses the keyboard,
+     matching normal Android behavior. Only once nothing is focused does it fall
+     through to closing the current editor/overlay. */
+  window.AndroidBack = function(){
+    if(isEditableFocused()){ document.activeElement.blur(); syncNativeNav(); return; }
+    if(effectEditor.classList.contains('open')){ closeEffectEditor(); return; }
+    if(magicSettings.classList.contains('open')){ closeMagicSettings(); return; }
+    if(drawOverlay.classList.contains('open')){ document.getElementById('drawCancel').click(); return; }
+    if(editor.classList.contains('open')){ closeEditor(); return; }
+  };
+  [editor, drawOverlay, magicSettings, effectEditor].forEach(function(el){
+    new MutationObserver(syncNativeNav).observe(el, {attributes:true, attributeFilter:['class']});
+  });
+  document.addEventListener('focusin', syncNativeNav, true);
+  document.addEventListener('focusout', function(){ setTimeout(syncNativeNav, 0); }, true);
+  syncNativeNav();
+
+  /* ---------------- init ---------------- */
+  (function(){
+    var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    if(activeFx && activeFx.type === 'list') syncActiveListPreview(activeFx, false);
+  })();
   render();
+  applyLockBackground();
 
+  /* Tells native code (MainActivity) that the very first frame is drawn, so the
+     splash screen can stay up until there's real content behind it instead of
+     dismissing on a timer and leaving a blank/black gap underneath. The double
+     rAF waits until the browser has actually painted this frame, not just
+     scheduled it. */
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      if(window.NativeNav && window.NativeNav.setContentReady){
+        window.NativeNav.setContentReady();
+      }
+    });
+  });
 })();
+</script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
 </script>
 </body>
 </html>
