@@ -29,9 +29,17 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
-    SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
-    splashScreen.setKeepOnScreenCondition(() -> !contentReady);
-    new Handler(Looper.getMainLooper()).postDelayed(() -> contentReady = true, 1500);
+    // Best-effort: hold the splash screen open until content is ready. This
+    // depends on the app's theme being set up in a specific way, which this
+    // code can't fully verify ahead of time -- if anything about it doesn't
+    // match, skip it quietly rather than crashing the whole app on launch.
+    try {
+      SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
+      splashScreen.setKeepOnScreenCondition(() -> !contentReady);
+      new Handler(Looper.getMainLooper()).postDelayed(() -> contentReady = true, 1500);
+    } catch (Throwable t) {
+      contentReady = true;
+    }
 
     super.onCreate(savedInstanceState);
     enableImmersiveMode();
