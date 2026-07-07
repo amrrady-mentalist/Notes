@@ -1,6 +1,8 @@
 package com.notesapp.offline;
 
+import android.graphics.Color;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -36,7 +38,7 @@ public class MainActivity extends BridgeActivity {
     try {
       SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
       splashScreen.setKeepOnScreenCondition(() -> !contentReady);
-      new Handler(Looper.getMainLooper()).postDelayed(() -> contentReady = true, 1500);
+      new Handler(Looper.getMainLooper()).postDelayed(this::markContentReady, 1500);
     } catch (Throwable t) {
       contentReady = true;
     }
@@ -57,6 +59,17 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
+  /** Marks content as ready (unblocking the splash's keepOnScreenCondition, if
+   *  it's active) and clears any leftover splash-themed window background, so
+   *  nothing splash-shaped can remain visible once the real app is showing --
+   *  regardless of exactly why a gap might otherwise appear. */
+  private void markContentReady() {
+    contentReady = true;
+    try {
+      getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+    } catch (Throwable ignored) {}
+  }
+
   /** Exposes NativeNav.setRootScreen(bool) / setContentReady() to JS: the former
    *  tells native code whether it's safe to minimize on back (or whether JS
    *  should handle it by closing an open editor/drawing/settings screen), the
@@ -70,7 +83,7 @@ public class MainActivity extends BridgeActivity {
 
       @JavascriptInterface
       public void setContentReady() {
-        contentReady = true;
+        runOnUiThread(MainActivity.this::markContentReady);
       }
     }, "NativeNav");
   }
@@ -134,5 +147,18 @@ public class MainActivity extends BridgeActivity {
               | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
               | View.SYSTEM_UI_FLAG_FULLSCREEN);
     }
+    // setDecorFitsSystemWindows(false) above only tells the *window* to draw
+    // edge-to-edge; if the WebView (or a parent of it) still has its own
+    // fitsSystemWindows=true, that view will keep insetting itself below the
+    // status bar regardless, leaving a gap above it that exposes the window's
+    // own background (this was the visible leftover splash-shaped strip at
+    // the top of the screen). Force it off the whole way up the view chain.
+    try {
+      View v = bridge.getWebView();
+      while (v != null) {
+        v.setFitsSystemWindows(false);
+        v = (v.getParent() instanceof View) ? (View) v.getParent() : null;
+      }
+    } catch (Throwable ignored) {}
   }
 }
