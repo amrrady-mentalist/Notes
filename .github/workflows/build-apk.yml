@@ -27,13 +27,13 @@ jobs:
       - name: Install ImageMagick
         run: sudo apt-get update && sudo apt-get install -y imagemagick
 
-      - name: Replace app icon with a real adaptive + light/dark + themed icon
+      - name: Replace app icon with a full-bleed adaptive icon
         run: |
           set -e
           RES=android/app/src/main/res
 
           # Legacy flat icon (pre-Android 8 devices, which ignore adaptive-icon XML
-          # entirely and can't react to theme -- so they just get the light version).
+          # entirely). Single flat design, no theme variants.
           LEGACY=www/icons/icon-512.png
           declare -A LEGACY_SIZES=( [mdpi]=48 [hdpi]=72 [xhdpi]=96 [xxhdpi]=144 [xxxhdpi]=192 )
           for density in "${!LEGACY_SIZES[@]}"; do
@@ -44,19 +44,12 @@ jobs:
             convert "$LEGACY" -resize ${size}x${size} "$dir/ic_launcher_round.png"
           done
 
-          # Adaptive icon layers (Android 8+), shipped as `drawable` (not `mipmap`) so
-          # the day/night resource qualifier can swap background+foreground based on
-          # system light/dark theme, on top of Android 13+ wallpaper-tinted monochrome.
-          mkdir -p $RES/drawable-xxxhdpi $RES/drawable-night-xxxhdpi
-          convert www/icons/icon-background-light.png -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_background.png
-          convert www/icons/icon-foreground-light.png  -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_foreground.png
-          convert www/icons/icon-background-dark.png   -resize 432x432 $RES/drawable-night-xxxhdpi/ic_launcher_background.png
-          convert www/icons/icon-foreground-dark.png   -resize 432x432 $RES/drawable-night-xxxhdpi/ic_launcher_foreground.png
-          convert www/icons/icon-monochrome.png        -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_monochrome.png
+          # Adaptive icon layers (Android 8+): one flat background color + one
+          # full-bleed foreground glyph, no day/night or monochrome variants.
+          mkdir -p $RES/drawable-xxxhdpi
+          convert www/icons/icon-background.png -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_background.png
+          convert www/icons/icon-foreground.png  -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_foreground.png
 
-          # Adaptive icon XML: composes the layers above; `monochrome` is what Android
-          # 13+ uses for themed (wallpaper-tinted) icons, `background`/`foreground`
-          # resolve to the day or night drawable automatically at runtime.
           rm -rf $RES/mipmap-anydpi-v26
           mkdir -p $RES/mipmap-anydpi-v26
           for name in ic_launcher ic_launcher_round; do
@@ -65,41 +58,21 @@ jobs:
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
               <background android:drawable="@drawable/ic_launcher_background"/>
               <foreground android:drawable="@drawable/ic_launcher_foreground"/>
-              <monochrome android:drawable="@drawable/ic_launcher_monochrome"/>
           </adaptive-icon>
           EOF
           done
 
-      - name: Replace splash screen with light/dark variants matching the icon
+      - name: Replace splash screen (icon centered on black, single variant)
         run: |
           set -e
-          LIGHT=www/icons/splash-light.png
-          DARK=www/icons/splash-dark.png
+          SPLASH=www/icons/splash.png
           # Regenerate every splash.png the default Capacitor template ships (across
-          # all density/orientation drawable folders) at its own existing resolution,
-          # and mirror each one into a `-night-` qualified folder with the dark
-          # variant, so the splash follows the system light/dark theme automatically.
+          # all density/orientation drawable folders) at its own existing resolution.
+          # Single flat variant -- no light/dark split.
           mapfile -t splash_files < <(find android/app/src/main/res -type f -name 'splash.png')
           for f in "${splash_files[@]}"; do
             dims=$(identify -format '%wx%h' "$f")
-            dir=$(dirname "$f")
-            base=$(basename "$dir")
-
-            # insert a "night" qualifier in the right position (after orientation,
-            # before density) e.g. drawable-port-mdpi -> drawable-port-night-mdpi
-            if [[ "$base" == drawable-port-* || "$base" == drawable-land-* ]]; then
-              night_base=${base/-port-/-port-night-}
-              night_base=${night_base/-land-/-land-night-}
-            elif [[ "$base" == "drawable" ]]; then
-              night_base="drawable-night"
-            else
-              night_base=${base/drawable-/drawable-night-}
-            fi
-            night_dir=$(dirname "$dir")/$night_base
-            mkdir -p "$night_dir"
-
-            convert "$LIGHT" -resize "${dims}^" -gravity center -extent "$dims" "$f"
-            convert "$DARK"  -resize "${dims}^" -gravity center -extent "$dims" "$night_dir/splash.png"
+            convert "$SPLASH" -resize "${dims}^" -gravity center -extent "$dims" "$f"
           done
 
       - name: Inject immersive-mode MainActivity
