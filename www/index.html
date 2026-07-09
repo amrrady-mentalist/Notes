@@ -12,10 +12,6 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Notes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<!-- loaded as "print" media so it can never block first paint; swaps to "all"
-     once it finishes loading. If there's no connection it just never swaps and
-     the fallback fonts below (already the same metrics-safe stack) stay put --
-     no delay, no flash, no waiting on a network request that may never resolve. -->
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Bebas+Neue&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{
@@ -74,7 +70,6 @@ input, textarea, [contenteditable]{-webkit-user-select:text; user-select:text;}
 
 #app{position:relative; z-index:1; height:100%; display:flex; flex-direction:column;}
 
-/* ---------- glass base ---------- */
 .glass{
   background:var(--glass-fill);
   backdrop-filter:blur(26px) saturate(180%);
@@ -91,15 +86,8 @@ input, textarea, [contenteditable]{-webkit-user-select:text; user-select:text;}
   position:absolute; inset:0; border-radius:inherit; pointer-events:none;
   background:linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 40%);
 }
-/* Note cards reuse the .glass look but are the one place it appears in large,
-   scrolling, frequently-animated quantities. A live backdrop-filter blur is
-   recomputed every frame for every card on screen, which is what made tab
-   switches and scrolling feel heavy/janky. The notes grid only ever sits over
-   a flat background color, so the blur was never visibly doing anything here
-   -- turning it off keeps an identical look for a fraction of the GPU cost. */
 .card.glass{backdrop-filter:none; -webkit-backdrop-filter:none;}
 
-/* ---------- header ---------- */
 header{
   flex:0 0 auto;
   padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 10px;
@@ -125,13 +113,6 @@ h1{
   flex:1; background:none; border:none; outline:none; color:var(--text-primary);
   font-size:15px; font-family:'Inter';
 }
-/* Every tappable control gets touch-action:manipulation, which tells the
-   browser to skip its default ~300ms "wait and see if this becomes a
-   double-tap/pinch-zoom" delay and respond to the tap immediately. The
-   viewport meta tag disables zooming already, but WebView doesn't always
-   infer from that alone -- this makes it explicit per element, which is
-   what actually removes the last bit of perceived tap lag throughout the
-   app (pin keypad, tab chips, cards, buttons, everything clickable). */
 button, .card, .chip, .fab, .icon-btn, .btn-pill, .fmt-btn, .pin-key,
 .tab, a, [role="button"]{ touch-action:manipulation; }
 
@@ -146,7 +127,6 @@ button, .card, .chip, .fab, .icon-btn, .btn-pill, .fmt-btn, .pin-key,
 }
 .chip.active{color:var(--text-primary); background:var(--glass-fill-strong);}
 
-/* ---------- notes grid ---------- */
 main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + env(safe-area-inset-bottom,0px)); touch-action:pan-y;}
 .tab-content{will-change:transform;}
 .grid{
@@ -183,7 +163,6 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 .empty-state h3{font-family:'Manrope'; color:var(--text-secondary); font-size:17px; margin:0;}
 .empty-state p{font-size:13px; margin:0; max-width:220px;}
 
-/* ---------- dock / FABs ---------- */
 .dock-wrap{
   position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px));
   z-index:20; display:flex; flex-direction:column; align-items:center; gap:14px;
@@ -200,14 +179,12 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 .fab:active{transform:scale(0.92);}
 .fab svg{width:24px; height:24px;}
 
-/* bottom sort/filter bar (small pill) */
 .toolbar-pill{
   position:fixed; left:18px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:20;
   border-radius:100px; padding:10px 16px; display:flex; align-items:center; gap:8px;
   font-size:13px; font-weight:600; color:var(--text-secondary); cursor:pointer;
 }
 
-/* ---------- editor ---------- */
 .editor{
   position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
   background:var(--bg-void);
@@ -251,7 +228,6 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
   border:1px solid rgba(255,255,255,0.15);
 }
 
-/* editor bottom format bar */
 .format-bar{
   flex:0 0 auto; display:flex; align-items:center; gap:4px;
   margin:0 14px calc(14px + env(safe-area-inset-bottom,0px));
@@ -266,12 +242,10 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 .fmt-btn:active{transform:scale(0.9);}
 .fmt-btn.active{background:var(--glass-fill-strong); color:var(--accent-b);}
 
-/* color swatch row */
 .swatch-row{display:flex; gap:10px; padding:12px 4px; align-items:center;}
 .swatch{width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid transparent;}
 .swatch.selected{border-color:#fff;}
 
-/* context menu popover */
 .popover{
   position:fixed; z-index:60; border-radius:var(--radius-md); padding:8px; min-width:190px;
   opacity:0; transform:scale(0.9) translateY(6px); transform-origin:top right; pointer-events:none;
@@ -298,7 +272,6 @@ body.light .popover{
 }
 .popover-scrim.open{pointer-events:auto;}
 
-/* ---------- drawing overlay ---------- */
 .draw-overlay{
   position:fixed; inset:0; z-index:90; display:flex; flex-direction:column;
   background:var(--bg-void); transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1);
@@ -335,7 +308,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 
 ::selection{background:rgba(139,124,255,0.4);}
 
-/* ---------- hidden magic settings ---------- */
 .magic-panel{
   position:fixed; inset:0; z-index:80; display:flex; flex-direction:column;
   background:var(--bg-void); transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.72,0,1);
@@ -354,7 +326,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 .magic-empty{color:var(--text-tertiary); font-size:14px; text-align:center; padding:60px 20px;}
 .magic-fab{position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:81;}
 
-/* lock screen background upload */
 .lockbg-section{padding:0 20px 18px; flex:0 0 auto;}
 .lockbg-row{display:flex; align-items:center; gap:14px;}
 .lockbg-thumb{
@@ -368,7 +339,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 #lockBgRemoveBtn{color:var(--danger); display:none;}
 #lockBgRemoveBtn.show{display:inline-block;}
 
-/* effect editor */
 #effectEditor{z-index:85;}
 .effect-name-input{
   width:100%; background:none; border:none; outline:none; color:var(--text-primary);
@@ -422,7 +392,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 .out-sketch-clear{font-size:12px; color:var(--danger); cursor:pointer; margin-left:auto;}
 .out-sketch-clear:active{opacity:0.6;}
 
-/* ---------- magic lock flow: blackout / ambient clock / pin ---------- */
 #lockFlow{position:fixed; inset:0; z-index:500; background:#000; display:none;}
 #lockFlow.open{display:block;}
 .lock-screen{position:absolute; inset:0; display:none; flex-direction:column; align-items:center; -webkit-user-select:none; user-select:none;}
@@ -455,10 +424,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 }
 .pin-blur-backdrop{
   position:absolute; inset:0;
-  /* one shared frosted layer behind the entire pin screen (label, dots, keypad)
-     instead of just a rectangle behind the keys -- matches how a real lock
-     screen blurs the whole wallpaper, and it's still a single blur op so it
-     costs no more than the old keypad-only panel did. */
   backdrop-filter:blur(30px) saturate(140%); -webkit-backdrop-filter:blur(30px) saturate(140%);
   pointer-events:none;
 }
@@ -543,7 +508,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
-<!-- editor -->
 <div class="scrim" id="scrim"></div>
 <div class="popover-scrim" id="popoverScrim"></div>
 <div class="editor" id="editor">
@@ -575,7 +539,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
-<!-- context / more popover -->
 <div class="popover glass" id="morePopover">
   <div class="pop-item" data-act="pin">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.5 5.5L19 9l-4 3.5L16 18l-4-3-4 3 1-5.5-4-3.5 5.5-1.5z"/></svg>
@@ -592,14 +555,12 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
-<!-- sort popover -->
 <div class="popover glass" id="sortPopover">
   <div class="pop-item" data-sort="recent">Most recent</div>
   <div class="pop-item" data-sort="title">Title A–Z</div>
   <div class="pop-item" data-sort="oldest">Oldest first</div>
 </div>
 
-<!-- drawing overlay -->
 <div class="draw-overlay" id="drawOverlay">
   <div class="draw-top">
     <div class="icon-btn glass" id="drawCancel">
@@ -631,7 +592,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
-<!-- hidden magic settings -->
 <div class="magic-panel" id="magicSettings">
   <div class="editor-top">
     <div class="icon-btn glass" id="magicSettingsBack">
@@ -659,7 +619,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
-<!-- effect editor -->
 <div class="magic-panel" id="effectEditor">
   <div class="editor-top">
     <div class="icon-btn glass" id="effectEditorBack">
@@ -703,7 +662,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
-<!-- magic lock flow: blackout / ambient clock / pin entry -->
 <div id="lockFlow">
   <div class="lock-screen active" id="blackoutScreen"></div>
   <div class="lock-screen" id="ambientScreen">
@@ -731,23 +689,43 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 (function(){
   "use strict";
 
-  /* ---------------- persistence ---------------- */
-  var STORAGE_KEY = "liquidnotes_v1";
-  var memoryStore = null;
-  function loadNotes(){
-    try{
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if(raw) return JSON.parse(raw);
-    }catch(e){ /* storage unavailable, fall back to memory */ }
-    return memoryStore || seedNotes();
+  /* ---------------- persistence (IndexedDB) ---------------- */
+  var DB_NAME = "LiquidNotesDB";
+  function openDB(){
+    return new Promise(function(resolve, reject){
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function(e){
+        var db = e.target.result;
+        if(!db.objectStoreNames.contains('store')) db.createObjectStore('store');
+      };
+      req.onsuccess = function(e){ resolve(e.target.result); };
+      req.onerror = function(e){ reject(e); };
+    });
   }
-  function saveNotes(){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    }catch(e){
-      memoryStore = notes;
-    }
+  function dbGet(key){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('store', 'readonly');
+        var req = tx.objectStore('store').get(key);
+        req.onsuccess = function(){ resolve(req.result); };
+        req.onerror = function(){ resolve(null); };
+      });
+    }).catch(function(){ return null; });
   }
+  function dbSet(key, val){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction('store', 'readwrite');
+        var req = tx.objectStore('store').put(val, key);
+        req.onsuccess = function(){ resolve(); };
+        req.onerror = function(e){ reject(e); };
+      });
+    }).catch(function(){});
+  }
+
+  function saveNotes(){ dbSet("liquidnotes_v1", notes); }
+  function saveMagic(){ dbSet("liquidnotes_magic_v1", magic); }
+
   function seedNotes(){
     var now = Date.now();
     return [
@@ -757,15 +735,15 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   }
   function uid(){ return 'n' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 
-  var notes = loadNotes();
-
   /* ---------------- state ---------------- */
+  var notes = [];
+  var magic = {effects:[], activeEffectId:null};
   var state = {
     filter: 'all',
     search: '',
     sort: 'recent',
     activeNoteId: null,
-    editingDrawingTarget: null // 'slot' when editing note's attached drawing
+    editingDrawingTarget: null
   };
 
   var colorMap = {
@@ -830,12 +808,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     render();
   }
 
-  /* directional slide transition used for tab taps (transform-only: fading opacity
-     on a container full of backdrop-filter cards causes a flash of unblurred content
-     mid-transition in some browsers, so we slide without fading). Swipe-to-switch has
-     been removed in favor of tapping a tab name directly, so this is now the single,
-     consistent way tabs change - driven by requestAnimationFrame handoff plus a
-     transitionend listener for the smoothest possible cut between the two legs. */
   function commitSwitch(key, dir){
     if(switching) return;
     switching = true;
@@ -857,7 +829,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       setTimeout(function(){ switching = false; }, 190);
     }
     tabContent.addEventListener('transitionend', playIn, {once:true});
-    setTimeout(playIn, 130); /* safety fallback in case transitionend doesn't fire */
+    setTimeout(playIn, 130);
   }
 
   searchInput.addEventListener('input', function(){
@@ -1112,11 +1084,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   }
   contentEditable.addEventListener('focus', function(){
     if(contentEditable.textContent.trim() === '' && !contentEditable.querySelector('ul,img')){
-      // leave empty, placeholder handled by :empty css fallback below
     }
   });
 
-  /* placeholder for contenteditable */
   var style2 = document.createElement('style');
   style2.textContent = "#contentEditable:empty:before{content:attr(data-placeholder); color:var(--text-tertiary);} #titleInput{caret-color:var(--accent-b);} #contentEditable{caret-color:var(--accent-b);}";
   document.head.appendChild(style2);
@@ -1395,18 +1365,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   updateSizePreview();
 
   /* ---------------- magic settings (hidden) ---------------- */
-  var MAGIC_KEY = "liquidnotes_magic_v1";
-  function loadMagic(){
-    try{
-      var raw = localStorage.getItem(MAGIC_KEY);
-      if(raw) return JSON.parse(raw);
-    }catch(e){}
-    return {effects:[], activeEffectId:null};
-  }
-  function saveMagic(){
-    try{ localStorage.setItem(MAGIC_KEY, JSON.stringify(magic)); }catch(e){}
-  }
-  var magic = loadMagic();
   var editingEffectId = null;
 
   var magicSettings = document.getElementById('magicSettings');
@@ -1709,13 +1667,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     saveMagic();
   });
 
-  /* ---------------- magic lock flow: blackout / ambient / pin ---------------- */
+  /* ---------------- magic lock flow ---------------- */
   var lockFlow = document.getElementById('lockFlow');
-
-  /* immersive fullscreen: hides the browser chrome (address bar / nav bar) so the
-     blackout / ambient / pin screens bleed edge-to-edge like a real lock screen.
-     Fullscreen requires a user gesture, so it's requested on the first tap inside
-     the lock flow rather than on load. */
   function requestImmersiveFullscreen(){
     if(document.fullscreenElement || document.webkitFullscreenElement) return;
     var el = document.documentElement;
@@ -1773,12 +1726,10 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     el.addEventListener('dblclick', function(e){ cb(e); });
   }
 
-  /* double-tap blackout: always wakes to the ambient clock screen */
   attachDoubleTap(blackoutScreen, function(){
     showLockScreen('ambientScreen');
   });
 
-  /* swipe up on ambient clock to reach the PIN screen */
   var ambStartY = 0, ambDragging = false;
   ambientScreen.addEventListener('touchstart', function(e){
     ambStartY = e.touches[0].clientY;
@@ -1791,7 +1742,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     if(dy < -60) showLockScreen('pinScreen');
   }, {passive:true});
 
-  /* secret abort: double-tap the zone above the dial pad to bail back to blackout */
   attachDoubleTap(document.getElementById('pinAbortZone'), function(){
     pinDigits = '';
     renderPinDots();
@@ -1814,8 +1764,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     pinKeypad.appendChild(btn);
   });
 
-  /* number of dot slots shown / digits required before auto-submitting; mirrors the
-     longest configured code for the active effect, defaulting to a standard 4-digit PIN */
   function requiredPinLength(){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     var len = 4;
@@ -1826,33 +1774,20 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     }
     return len;
   }
-  /* the list's real, ordered items: blank lines are dropped and the list is capped
-     at 1000 entries. This is the single source of truth for both the on-screen
-     count and the actual list length used for code-decoding. */
   function listActualItems(items){
     var arr = (items || []).filter(function(l){ return l && l.trim() !== ''; });
     if(arr.length > 1000) arr = arr.slice(0, 1000);
     return arr;
   }
-  /* lists of 100 items or fewer are addressed with a 2-digit code (00-99);
-     larger lists (up to 1000) need a 3-digit code (000-999) */
   function listCodeDigits(items){
     return listActualItems(items).length > 100 ? 3 : 2;
   }
-  /* builds a plain numbered list (no checkboxes), sized to exactly however many
-     real items were entered - it never pads out to 100 and never truncates at 100 */
   function buildListPlainHtml(items){
     var arr = listActualItems(items);
     return '<ol class="force-list">' + arr.map(function(text){
       return '<li>' + escapeHtml(text) + '</li>';
     }).join('') + '</ol>';
   }
-  /* moves the force item (which must match one of the list's own items verbatim)
-     to the position derived from the entered code, instead of overwriting whatever
-     was already in that slot. The rest of the list keeps its relative order. Code
-     length auto-scales with list size: 2 digits for <=100 items (00 = last item),
-     3 digits for 101-1000 items (000 = last item). If the code points past the
-     list's actual length it wraps around, so every code always lands somewhere. */
   function buildListForceHtml(items, forceWord, code){
     var arr = listActualItems(items);
     var n = arr.length;
@@ -1862,7 +1797,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     var val = parseInt(code, 10);
     if(isNaN(val)) val = 0;
     var effectiveVal = (val === 0) ? base : val;
-    var targetPos = ((effectiveVal - 1) % n) + 1; /* 1-based position in the final list */
+    var targetPos = ((effectiveVal - 1) % n) + 1; 
     var fw = (forceWord || '').trim();
     var idx = -1;
     if(fw){
@@ -1878,14 +1813,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       return '<li>' + escapeHtml(text) + '</li>';
     }).join('') + '</ol>';
   }
-  /* finds the single note tied to a given effect (used to update the force-list
-     preview note in place instead of spawning a new note each time) */
   function findLinkedListNote(effectId){
     return notes.find(function(n){ return n.magicEffectId === effectId; });
   }
-  /* creates or updates the on-page preview note for the active list-force effect.
-     resetContent=true regenerates the plain (unforced) 1-100 list; resetContent=false
-     just keeps the title/pin state in sync without touching existing content. */
   function syncActiveListPreview(fx, resetContent){
     if(!fx || fx.type !== 'list') return;
     var note = findLinkedListNote(fx.id);
@@ -1920,8 +1850,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     renderPinDots();
     if(pinDigits.length >= requiredPinLength()) resolvePin(pinDigits);
   }
-
-  /* turns an effect body + resolved word into note contentHTML, replacing $$$$ */
   function buildEffectHtml(body, word){
     var escapedWord = escapeHtml(word);
     var lines = (body || '').split('\n');
@@ -1930,8 +1858,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       return '<p>' + (escaped || '<br>') + '</p>';
     }).join('');
   }
-
-  /* decodes the entered PIN against the active effect's outs and drops the resulting note at the top of the list */
   function resolvePin(pin){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     if(fx && fx.type === 'list'){
@@ -1973,19 +1899,18 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     applyFilter('all');
   }
 
-  /* double-tap the page title to summon the blackout screen, starting the lock flow */
   attachDoubleTap(document.getElementById('pageTitle'), function(){
     if(editor.classList.contains('open')) closeEditor();
     closePopovers();
     enterLockFlow();
   });
 
-  /* ---------------- theme toggle (dark / light / system) ---------------- */
+  /* ---------------- theme toggle ---------------- */
   var themeToggle = document.getElementById('themeToggle');
   var iconMoon = document.getElementById('themeIconMoon');
   var iconSun = document.getElementById('themeIconSun');
   var systemDarkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  var themeMode = 'dark'; // 'dark' | 'light' | 'system'
+  var themeMode = 'dark'; 
   function effectiveIsLight(){
     if(themeMode === 'system') return systemDarkQuery ? !systemDarkQuery.matches : false;
     return themeMode === 'light';
@@ -1997,29 +1922,19 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     iconMoon.style.display = isLight ? 'none' : 'block';
     iconSun.style.display = isLight ? 'block' : 'none';
     themeToggle.classList.toggle('system-mode', mode === 'system');
-    try{ localStorage.setItem('liquidnotes_theme', mode); }catch(e){}
+    dbSet('liquidnotes_theme', mode);
   }
-  var savedTheme = 'dark';
-  try{ savedTheme = localStorage.getItem('liquidnotes_theme') || 'dark'; }catch(e){}
-  applyTheme(savedTheme);
   if(systemDarkQuery){
     var onSystemChange = function(){ if(themeMode === 'system') applyTheme('system'); };
     if(systemDarkQuery.addEventListener) systemDarkQuery.addEventListener('change', onSystemChange);
     else if(systemDarkQuery.addListener) systemDarkQuery.addListener(onSystemChange);
   }
-  /* tap cycles: dark -> light -> system (follows device) -> dark */
   themeToggle.addEventListener('click', function(){
     var next = themeMode === 'dark' ? 'light' : (themeMode === 'light' ? 'system' : 'dark');
     applyTheme(next);
   });
 
-  /* ---------------- Android hardware/gesture back button bridge ----------------
-     Without this, Android's edge-swipe/back gesture bypasses all our own close
-     logic (closeEditor, closeDrawing, etc.) and either exits the app outright or
-     leaves state half-saved (e.g. an empty note never getting cleaned up). The
-     native side (MainActivity.java) calls window.AndroidBack() instead of
-     letting the OS handle back, and we tell it whether we're at the root screen
-     via the NativeNav bridge so it knows when it's safe to just minimize. */
+  /* ---------------- Android bridge ---------------- */
   function isEditableFocused(){
     var ae = document.activeElement;
     if(!ae) return false;
@@ -2037,10 +1952,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       window.NativeNav.setRootScreen(isRootScreen());
     }
   }
-  /* back gesture/button: if a keyboard is up (any input/textarea/contenteditable
-     focused, anywhere in the app) the first back just dismisses the keyboard,
-     matching normal Android behavior. Only once nothing is focused does it fall
-     through to closing the current editor/overlay. */
   window.AndroidBack = function(){
     if(isEditableFocused()){ document.activeElement.blur(); syncNativeNav(); return; }
     if(effectEditor.classList.contains('open')){ closeEffectEditor(); return; }
@@ -2055,26 +1966,33 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   document.addEventListener('focusout', function(){ setTimeout(syncNativeNav, 0); }, true);
   syncNativeNav();
 
-  /* ---------------- init ---------------- */
-  (function(){
+  /* ---------------- app init ---------------- */
+  async function initApp() {
+    var savedN = await dbGet("liquidnotes_v1");
+    notes = savedN || seedNotes();
+
+    var savedM = await dbGet("liquidnotes_magic_v1");
+    magic = savedM || {effects:[], activeEffectId:null};
+
+    var savedT = await dbGet("liquidnotes_theme");
+    applyTheme(savedT || 'dark');
+
     var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     if(activeFx && activeFx.type === 'list') syncActiveListPreview(activeFx, false);
-  })();
-  render();
-  applyLockBackground();
 
-  /* Tells native code (MainActivity) that the very first frame is drawn, so the
-     splash screen can stay up until there's real content behind it instead of
-     dismissing on a timer and leaving a blank/black gap underneath. The double
-     rAF waits until the browser has actually painted this frame, not just
-     scheduled it. */
-  requestAnimationFrame(function(){
+    render();
+    applyLockBackground();
+
     requestAnimationFrame(function(){
-      if(window.NativeNav && window.NativeNav.setContentReady){
-        window.NativeNav.setContentReady();
-      }
+      requestAnimationFrame(function(){
+        if(window.NativeNav && window.NativeNav.setContentReady){
+          window.NativeNav.setContentReady();
+        }
+      });
     });
-  });
+  }
+
+  initApp();
 })();
 </script>
 <script>
