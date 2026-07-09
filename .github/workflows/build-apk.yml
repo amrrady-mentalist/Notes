@@ -1,105 +1,48 @@
-name: Build Offline APK
+name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
-      - name: Install dependencies
+      - name: Install Web Dependencies
         run: npm install
 
-      - name: Add Android platform
-        run: npx cap add android
+      - name: Generate App Icons
+        run: npm run generate-assets
 
-      - name: Copy web assets
-        run: npx cap copy android
+      - name: Sync Capacitor (Android)
+        run: npx cap sync android
 
-      - name: Install ImageMagick
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
-
-      - name: Replace app icon with a full-bleed adaptive icon
-        run: |
-          set -e
-          RES=android/app/src/main/res
-
-          # Legacy flat icon (pre-Android 8 devices, which ignore adaptive-icon XML
-          # entirely). Single flat design, no theme variants.
-          LEGACY=www/icons/icon-512.png
-          declare -A LEGACY_SIZES=( [mdpi]=48 [hdpi]=72 [xhdpi]=96 [xxhdpi]=144 [xxxhdpi]=192 )
-          for density in "${!LEGACY_SIZES[@]}"; do
-            size=${LEGACY_SIZES[$density]}
-            dir=$RES/mipmap-$density
-            mkdir -p "$dir"
-            convert "$LEGACY" -resize ${size}x${size} "$dir/ic_launcher.png"
-            convert "$LEGACY" -resize ${size}x${size} "$dir/ic_launcher_round.png"
-          done
-
-          # Adaptive icon layers (Android 8+): flat background color + full-bleed
-          # foreground glyph, plus a monochrome silhouette. Monochrome is what
-          # Android 13+ "Themed icons" (and some OEM launchers, e.g. Samsung's
-          # icon theming) use to render a tinted version of the icon -- without
-          # it, launchers that have that feature turned on can render a BLANK
-          # icon instead of gracefully falling back to the normal one. This is
-          # a single static layer, not a day/night variant.
-          mkdir -p $RES/drawable-xxxhdpi
-          convert www/icons/icon-background.png -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_background.png
-          convert www/icons/icon-foreground.png  -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_foreground.png
-          convert www/icons/icon-monochrome.png  -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_monochrome.png
-
-          rm -rf $RES/mipmap-anydpi-v26
-          mkdir -p $RES/mipmap-anydpi-v26
-          for name in ic_launcher ic_launcher_round; do
-            cat > $RES/mipmap-anydpi-v26/$name.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-              <background android:drawable="@drawable/ic_launcher_background"/>
-              <foreground android:drawable="@drawable/ic_launcher_foreground"/>
-              <monochrome android:drawable="@drawable/ic_launcher_monochrome"/>
-          </adaptive-icon>
-          EOF
-          done
-
-      - name: Replace splash screen (icon centered on black, single variant)
-        run: |
-          set -e
-          SPLASH=www/icons/splash.png
-          # Regenerate every splash.png the default Capacitor template ships (across
-          # all density/orientation drawable folders) at its own existing resolution.
-          # Single flat variant -- no light/dark split.
-          mapfile -t splash_files < <(find android/app/src/main/res -type f -name 'splash.png')
-          for f in "${splash_files[@]}"; do
-            dims=$(identify -format '%wx%h' "$f")
-            convert "$SPLASH" -resize "${dims}^" -gravity center -extent "$dims" "$f"
-          done
-
-      - name: Inject immersive-mode MainActivity
-        run: |
-          mkdir -p android/app/src/main/java/com/notesapp/offline
-          cp MainActivity.java android/app/src/main/java/com/notesapp/offline/MainActivity.java
-
-      - uses: actions/setup-java@v4
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Build debug APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+      - name: Make Gradle Executable
+        working-directory: ./android
+        run: chmod +x ./gradlew
 
-      - name: Upload APK
+      - name: Build Debug APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: notes-app-debug-apk
+          name: notes-app-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
