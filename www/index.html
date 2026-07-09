@@ -453,8 +453,17 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     radial-gradient(ellipse 110% 30% at 50% 108%, rgba(60,160,150,0.18), transparent 65%),
     #000;
 }
+.pin-blur-backdrop{
+  position:absolute; inset:0;
+  /* one shared frosted layer behind the entire pin screen (label, dots, keypad)
+     instead of just a rectangle behind the keys -- matches how a real lock
+     screen blurs the whole wallpaper, and it's still a single blur op so it
+     costs no more than the old keypad-only panel did. */
+  backdrop-filter:blur(30px) saturate(140%); -webkit-backdrop-filter:blur(30px) saturate(140%);
+  pointer-events:none;
+}
 .pin-lock-icon{margin-bottom:14px; color:rgba(255,255,255,0.92);}
-.pin-abort-zone{display:flex; flex-direction:column; align-items:center;}
+.pin-abort-zone{position:relative; display:flex; flex-direction:column; align-items:center;}
 .pin-label{font-family:'Inter',sans-serif; font-size:20px; font-weight:400; color:rgba(255,255,255,0.95); margin-bottom:20px;}
 .pin-dots{display:flex; gap:18px; margin-bottom:64px; min-height:14px; flex-wrap:wrap; justify-content:center; max-width:240px;}
 .pin-dot{
@@ -467,12 +476,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   box-shadow:0 0 10px 2px rgba(255,255,255,0.75), 0 0 22px 6px rgba(255,255,255,0.35);
 }
 .pin-keypad{
+  position:relative;
   display:grid; grid-template-columns:repeat(3, 68px); gap:18px 26px; justify-content:center;
   padding:22px 26px; border-radius:36px;
-  /* one shared frosted panel behind all 12 keys instead of each key blurring
-     independently -- same look, ~12x less blur work recomputed per tap (this
-     was the main cause of the pin keypad feeling slow to respond). */
-  backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
 }
 .pin-key{
   width:68px; height:68px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -709,6 +715,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     </div>
   </div>
   <div class="lock-screen" id="pinScreen">
+    <div class="pin-blur-backdrop"></div>
     <div class="pin-abort-zone" id="pinAbortZone">
       <svg class="pin-lock-icon" width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm0 2a3 3 0 013 3v3H9V6a3 3 0 013-3zm0 10.5a1.5 1.5 0 011.5 1.5c0 .68-.4 1.26-.98 1.53l.36 1.72a.4.4 0 01-.39.48h-.98a.4.4 0 01-.39-.48l.36-1.72A1.5 1.5 0 0112 13.5z"/>
