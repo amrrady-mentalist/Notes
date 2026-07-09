@@ -21,6 +21,23 @@ jobs:
       - name: Install Web Dependencies
         run: npm install
 
+      - name: Prepare Web Assets (www folder)
+        # Capacitor expects your files to be in a "www" folder before adding the platform
+        run: |
+          mkdir -p www
+          cp index.html www/
+          cp manifest.json www/
+          cp sw.js www/
+          cp -r icons www/ || true
+
+      - name: Add Android Platform
+        # This generates the native 'android' folder from scratch
+        run: npx cap add android
+
+      - name: Inject Custom MainActivity
+        # This copies your custom magic Android tweaks over the default generated file
+        run: cp MainActivity.java android/app/src/main/java/com/notesapp/offline/MainActivity.java
+
       - name: Generate App Icons
         run: npm run generate-assets
 
