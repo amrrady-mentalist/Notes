@@ -44,11 +44,17 @@ jobs:
             convert "$LEGACY" -resize ${size}x${size} "$dir/ic_launcher_round.png"
           done
 
-          # Adaptive icon layers (Android 8+): one flat background color + one
-          # full-bleed foreground glyph, no day/night or monochrome variants.
+          # Adaptive icon layers (Android 8+): flat background color + full-bleed
+          # foreground glyph, plus a monochrome silhouette. Monochrome is what
+          # Android 13+ "Themed icons" (and some OEM launchers, e.g. Samsung's
+          # icon theming) use to render a tinted version of the icon -- without
+          # it, launchers that have that feature turned on can render a BLANK
+          # icon instead of gracefully falling back to the normal one. This is
+          # a single static layer, not a day/night variant.
           mkdir -p $RES/drawable-xxxhdpi
           convert www/icons/icon-background.png -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_background.png
           convert www/icons/icon-foreground.png  -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_foreground.png
+          convert www/icons/icon-monochrome.png  -resize 432x432 $RES/drawable-xxxhdpi/ic_launcher_monochrome.png
 
           rm -rf $RES/mipmap-anydpi-v26
           mkdir -p $RES/mipmap-anydpi-v26
@@ -58,6 +64,7 @@ jobs:
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
               <background android:drawable="@drawable/ic_launcher_background"/>
               <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+              <monochrome android:drawable="@drawable/ic_launcher_monochrome"/>
           </adaptive-icon>
           EOF
           done
