@@ -32,6 +32,24 @@ jobs:
         # Icon background stays pure black, unchanged.
         run: npx capacitor-assets generate --android --splashBackgroundColor '#FFFFFF' --splashBackgroundColorDark '#000000' --iconBackgroundColor '#000000'
 
+      - name: Force exact splash colors (light/dark)
+        # capacitor-assets can leave the dark-mode splash background at its own
+        # default gray instead of the value we passed above. This step directly
+        # overwrites every splash-related color resource with pure white/black,
+        # so the result is guaranteed correct regardless of that tool's behavior.
+        run: |
+          set -e
+          for f in $(find android/app/src/main/res -iname "colors.xml" -path "*values*"); do
+            if [[ "$f" == *values-night* ]]; then COLOR="#000000"; else COLOR="#FFFFFF"; fi
+            sed -i -E "s/(<color name=\"[^\"]*[Ss]plash[^\"]*\">)#[0-9A-Fa-f]{6,8}(<\/color>)/\1${COLOR}\2/" "$f"
+          done
+          for f in $(find android/app/src/main/res -iname "styles.xml" -path "*values*"); do
+            if [[ "$f" == *values-night* ]]; then COLOR="#000000"; else COLOR="#FFFFFF"; fi
+            sed -i -E "s/(windowSplashScreenBackground\">)#[0-9A-Fa-f]{6,8}(<\/item>)/\1${COLOR}\2/" "$f"
+          done
+          echo "--- Verification: splash color resources after patching ---"
+          grep -ri "splash" android/app/src/main/res/values*/colors.xml android/app/src/main/res/values*/styles.xml 2>/dev/null || true
+
       - name: Sync Capacitor (Android)
         run: npx cap sync android
 
