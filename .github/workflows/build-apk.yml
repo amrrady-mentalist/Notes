@@ -22,25 +22,21 @@ jobs:
         run: npm install
 
       - name: Add Android Platform
-        # Generates the native 'android' folder from scratch
         run: npx cap add android
 
       - name: Inject Custom MainActivity
-        # Copies your custom magic Android tweaks over the default generated file
         run: cp MainActivity.java android/app/src/main/java/com/notesapp/offline/MainActivity.java
 
       - name: Generate App Icons & Splash Screens
-        # This generates the assets and natively updates Android XML files (injecting the gray)
         run: npm run generate-assets
 
       - name: Sync Capacitor (Android)
         run: npx cap sync android
 
-      - name: Force Pitch Black Splash Screen (Moved here!)
-        # Runs AFTER the icon generator, aggressively overwriting the gray with pitch black
+      - name: Force Pitch Black Splash Screen
+        # Explicitly targets Android 12+ splash screen styles to guarantee pure black
         run: |
-          find android/app/src/main/res -name "colors.xml" -type f -exec sed -i -E 's/>#[a-fA-F0-9]{6,8}</>#000000</g' {} +
-          find android/app/src/main/res -name "variables.xml" -type f -exec sed -i -E 's/>#[a-fA-F0-9]{6,8}</>#000000</g' {} + || true
+          find android/app/src/main/res -name "styles.xml" -type f -exec sed -i -E 's/<item name="windowSplashScreenBackground">[^<]+<\/item>/<item name="windowSplashScreenBackground">#000000<\/item>/g' {} + || true
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
