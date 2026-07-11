@@ -25,6 +25,13 @@ jobs:
         # Generates the native 'android' folder from scratch
         run: npx cap add android
 
+      - name: Force Pitch Black Splash Screen
+        # Overrides Android's native default dark-gray backgrounds to true pitch black
+        run: |
+          sed -i 's/>#FFFFFF</>#000000</g' android/app/src/main/res/values/colors.xml || true
+          sed -i 's/>#121212</>#000000</g' android/app/src/main/res/values-night/colors.xml || true
+          sed -i 's/>#1c1c1d</>#000000</g' android/app/src/main/res/values-night/colors.xml || true
+
       - name: Inject Custom MainActivity
         # Copies your custom magic Android tweaks over the default generated file
         run: cp MainActivity.java android/app/src/main/java/com/notesapp/offline/MainActivity.java
