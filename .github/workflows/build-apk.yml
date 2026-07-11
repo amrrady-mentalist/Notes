@@ -33,10 +33,22 @@ jobs:
       - name: Sync Capacitor (Android)
         run: npx cap sync android
 
-      - name: Force Pitch Black Splash Screen
-        # Explicitly targets Android 12+ splash screen styles to guarantee pure black
+      - name: Nuke Android Colors to Pitch Black
+        # Completely overwrites Android's native color files so no gray can survive
         run: |
-          find android/app/src/main/res -name "styles.xml" -type f -exec sed -i -E 's/<item name="windowSplashScreenBackground">[^<]+<\/item>/<item name="windowSplashScreenBackground">#000000<\/item>/g' {} + || true
+          mkdir -p android/app/src/main/res/values-night
+          cat <<EOF > android/app/src/main/res/values/colors.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="colorPrimary">#000000</color>
+              <color name="colorPrimaryDark">#000000</color>
+              <color name="colorAccent">#000000</color>
+              <color name="background">#000000</color>
+              <color name="ic_launcher_background">#000000</color>
+              <color name="splash_screen_background">#000000</color>
+          </resources>
+          EOF
+          cp android/app/src/main/res/values/colors.xml android/app/src/main/res/values-night/colors.xml
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
