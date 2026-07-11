@@ -28,8 +28,9 @@ jobs:
         run: cp MainActivity.java android/app/src/main/java/com/notesapp/offline/MainActivity.java
 
       - name: Generate App Icons & Splash Screens
-        # Forces the generator to paint the empty canvas pure black instead of sampling image edges
-        run: npx capacitor-assets generate --android --splashBackgroundColor '#000000' --iconBackgroundColor '#000000'
+        # Splash background: pure white in light mode, pure black in dark mode.
+        # Icon background stays pure black, unchanged.
+        run: npx capacitor-assets generate --android --splashBackgroundColor '#FFFFFF' --splashBackgroundColorDark '#000000' --iconBackgroundColor '#000000'
 
       - name: Sync Capacitor (Android)
         run: npx cap sync android
