@@ -33,20 +33,24 @@ jobs:
       - name: Sync Capacitor (Android)
         run: npx cap sync android
 
-      - name: Annihilate Dark Mode Gray
-        # Overwrites the hidden Android Dark Mode settings that were forcing the gray screen
+      - name: Scorched Earth Pitch Black
+        # Completely dismantles Android's icon and splash screen systems to force pure black
         run: |
-          echo '<?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="colorPrimary">#000000</color>
-              <color name="colorPrimaryDark">#000000</color>
-              <color name="colorAccent">#000000</color>
-              <color name="background">#000000</color>
-              <color name="splash_screen_background">#000000</color>
-          </resources>' > android/app/src/main/res/values/colors.xml
+          # 1. Force the Android 12+ Splash Screen API to black
+          find android/app/src/main/res -name "styles.xml" -type f -exec sed -i -E 's/name="windowSplashScreenBackground">[^<]+/name="windowSplashScreenBackground">#000000/g' {} + || true
           
-          mkdir -p android/app/src/main/res/values-night
-          cp android/app/src/main/res/values/colors.xml android/app/src/main/res/values-night/colors.xml
+          # 2. Turn every single defined Android color to pitch black
+          find android/app/src/main/res -name "colors.xml" -type f -exec sed -i -E 's/>#[a-fA-F0-9]{6,8}</>#000000</g' {} + || true
+          
+          # 3. DESTROY the generated image backgrounds that are secretly hiding the gray pixels
+          find android/app/src/main/res -name "ic_launcher_background.png" -delete || true
+          
+          # 4. Create an unchangeable, pure black code-based background
+          mkdir -p android/app/src/main/res/drawable
+          echo '<?xml version="1.0" encoding="utf-8"?><color xmlns:android="http://schemas.android.com/apk/res/android" android:color="#000000"/>' > android/app/src/main/res/drawable/ic_launcher_background.xml
+          
+          # 5. Reroute the app icon to use our pure black code instead of the deleted images
+          find android/app/src/main/res -name "ic_launcher*.xml" -type f -exec sed -i -E 's/(@mipmap\/ic_launcher_background|@color\/ic_launcher_background)/@drawable\/ic_launcher_background/g' {} + || true
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
