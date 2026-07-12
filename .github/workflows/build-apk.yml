@@ -33,24 +33,51 @@ jobs:
       - name: Sync Capacitor (Android)
         run: npx cap sync android
 
-      - name: Scorched Earth Pitch Black
-        # Completely dismantles Android's icon and splash screen systems to force pure black
+      - name: The Ultimate Node.js Color Fix
+        # This script physically injects the missing black background tag into Android's launch theme
         run: |
-          # 1. Force the Android 12+ Splash Screen API to black
-          find android/app/src/main/res -name "styles.xml" -type f -exec sed -i -E 's/name="windowSplashScreenBackground">[^<]+/name="windowSplashScreenBackground">#000000/g' {} + || true
+          cat << 'EOF' > fix.js
+          const fs = require('fs');
+          const path = require('path');
           
-          # 2. Turn every single defined Android color to pitch black
-          find android/app/src/main/res -name "colors.xml" -type f -exec sed -i -E 's/>#[a-fA-F0-9]{6,8}</>#000000</g' {} + || true
-          
-          # 3. DESTROY the generated image backgrounds that are secretly hiding the gray pixels
-          find android/app/src/main/res -name "ic_launcher_background.png" -delete || true
-          
-          # 4. Create an unchangeable, pure black code-based background
-          mkdir -p android/app/src/main/res/drawable
-          echo '<?xml version="1.0" encoding="utf-8"?><color xmlns:android="http://schemas.android.com/apk/res/android" android:color="#000000"/>' > android/app/src/main/res/drawable/ic_launcher_background.xml
-          
-          # 5. Reroute the app icon to use our pure black code instead of the deleted images
-          find android/app/src/main/res -name "ic_launcher*.xml" -type f -exec sed -i -E 's/(@mipmap\/ic_launcher_background|@color\/ic_launcher_background)/@drawable\/ic_launcher_background/g' {} + || true
+          function processDir(dir) {
+            if (!fs.existsSync(dir)) return;
+            fs.readdirSync(dir).forEach(file => {
+              const fullPath = path.join(dir, file);
+              if (fs.statSync(fullPath).isDirectory()) {
+                processDir(fullPath);
+              } else if (fullPath.endsWith('.xml')) {
+                let content = fs.readFileSync(fullPath, 'utf8');
+                let original = content;
+                
+                // 1. Force ANY hex colors in colors.xml or background files to pitch black
+                if (fullPath.includes('colors.xml') || fullPath.includes('ic_launcher_background.xml')) {
+                  content = content.replace(/>#[0-9a-fA-F]{6,8}</g, '>#000000<');
+                  content = content.replace(/"#[0-9a-fA-F]{6,8}"/g, '"#000000"');
+                }
+                
+                // 2. Forcefully inject the black background into Android's Launch Theme
+                if (fullPath.includes('styles.xml') && content.includes('AppTheme.NoActionBarLaunch')) {
+                  // Replace it if it exists
+                  content = content.replace(/<item name="windowSplashScreenBackground">[^<]+<\/item>/g, '<item name="windowSplashScreenBackground">#000000</item>');
+                  content = content.replace(/<item name="android:windowSplashScreenBackground">[^<]+<\/item>/g, '<item name="android:windowSplashScreenBackground">#000000</item>');
+                  
+                  // Inject it if it is missing entirely (This is what caused the gray!)
+                  if (!content.includes('name="windowSplashScreenBackground"')) {
+                    content = content.replace(/(<style name="AppTheme\.NoActionBarLaunch"[^>]*>)/, '$1\n        <item name="windowSplashScreenBackground">#000000</item>\n        <item name="android:windowSplashScreenBackground">#000000</item>');
+                  }
+                }
+                
+                if (content !== original) {
+                  fs.writeFileSync(fullPath, content);
+                  console.log('Fixed:', fullPath);
+                }
+              }
+            });
+          }
+          processDir('android/app/src/main/res');
+          EOF
+          node fix.js
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
