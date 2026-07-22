@@ -114,7 +114,7 @@ h1{
   font-size:15px; font-family:'Inter';
 }
 button, .card, .chip, .fab, .icon-btn, .btn-pill, .fmt-btn, .pin-key,
-.tab, a, [role="button"]{ touch-action:manipulation; }
+.tab, a, [role="button"], .hs-app-icon{ touch-action:manipulation; }
 
 .search-bar input::placeholder{color:var(--text-tertiary);}
 
@@ -392,6 +392,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 .out-sketch-clear{font-size:12px; color:var(--danger); cursor:pointer; margin-left:auto;}
 .out-sketch-clear:active{opacity:0.6;}
 
+/* ---------- Classic Lock Flow ---------- */
 #lockFlow{position:fixed; inset:0; z-index:500; background:#000; display:none;}
 #lockFlow.open{display:block;}
 .lock-screen{position:absolute; inset:0; display:none; flex-direction:column; align-items:center; -webkit-user-select:none; user-select:none;}
@@ -462,6 +463,85 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   font-family:'Inter',sans-serif; font-weight:400; font-size:16px; color:rgba(255,255,255,0.92);
 }
 .pin-key.delete:active{transform:none; background:none; opacity:0.6;}
+
+/* ---------- Fake Home Screen Flow ---------- */
+#homeScreenFlow{
+  position:fixed; inset:0; z-index:500; display:none; background:#000;
+  overflow:hidden; -webkit-user-select:none; user-select:none;
+}
+#homeScreenFlow.open{display:block;}
+#hsBackground{
+  position:absolute; inset:0; background-size:cover; background-position:center;
+  z-index:1;
+}
+.hs-top-bar{
+  position:absolute; top:calc(env(safe-area-inset-top,0px) + 8px); left:16px; right:16px;
+  display:flex; justify-content:space-between; align-items:center; z-index:5;
+  color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
+}
+.hs-top-bar .hs-icons{display:flex; gap:6px; align-items:center;}
+.hs-widget-container{
+  position:absolute; top:calc(env(safe-area-inset-top,0px) + 50px); left:16px; right:16px;
+  height:120px; z-index:5; display:flex; justify-content:center;
+}
+.hs-clock-widget{
+  background:rgba(0,0,0,0.4); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-radius:24px; padding:16px 20px; display:flex; gap:20px; width:100%; max-width:340px;
+  color:#fff; align-items:center; justify-content:space-between;
+}
+.hs-clock-item{display:flex; flex-direction:column; align-items:center;}
+.hs-clock-face{width:46px; height:46px; border-radius:50%; background:#fff; position:relative; margin-bottom:6px;}
+.hs-clock-face::after{content:''; position:absolute; top:50%; left:50%; width:4px; height:4px; background:#000; border-radius:50%; transform:translate(-50%, -50%);}
+.hs-clock-hand-h{position:absolute; bottom:50%; left:50%; width:2px; height:12px; background:#000; transform-origin:bottom center;}
+.hs-clock-hand-m{position:absolute; bottom:50%; left:50%; width:2px; height:18px; background:#000; transform-origin:bottom center;}
+.hs-clock-city{font-size:12px; font-weight:600; margin-bottom:2px;}
+.hs-clock-sub{font-size:10px; color:rgba(255,255,255,0.6);}
+
+#hsPagesWrapper{
+  position:absolute; top:0; left:0; right:0; bottom:110px; z-index:10;
+  display:flex; transition:transform 0.3s ease-out; will-change:transform;
+}
+.hs-page{
+  flex:0 0 100vw; height:100%; position:relative; display:flex; flex-direction:column;
+  padding-top:calc(env(safe-area-inset-top,0px) + 190px);
+}
+.hs-grid{
+  display:grid; grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(6, 76px);
+  padding:0 12px; gap:8px;
+}
+.hs-app-wrapper{display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;}
+.hs-app-wrapper:active .hs-app-icon{transform:scale(0.92); opacity:0.8;}
+.hs-app-icon{
+  width:56px; height:56px; border-radius:14px; background:#fff;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 10px rgba(0,0,0,0.15); transition:transform 0.15s, opacity 0.15s;
+  overflow:hidden; position:relative;
+}
+.hs-app-icon img{width:100%; height:100%; object-fit:cover;}
+.hs-app-label{
+  color:#fff; font-size:11px; text-shadow:0 1px 3px rgba(0,0,0,0.8);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+
+.hs-dock{
+  position:absolute; bottom:calc(env(safe-area-inset-bottom,0px) + 16px); left:16px; right:16px;
+  height:76px; z-index:15; display:flex; justify-content:space-around; align-items:center;
+  background:rgba(255,255,255,0.15); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-radius:30px; padding:0 10px;
+}
+.hs-dock .hs-app-label{display:none;}
+
+#hsToast{
+  position:fixed; bottom:120px; left:50%; transform:translateX(-50%);
+  background:rgba(40,40,40,0.9); color:#fff; padding:10px 20px; border-radius:100px;
+  font-size:13px; z-index:550; opacity:0; pointer-events:none; transition:opacity 0.2s;
+}
+#hsToast.show{opacity:1;}
+
+.lock-mode-toggle{display:flex; gap:8px; margin-bottom:18px;}
+.lock-mode-btn{flex:1; text-align:center;}
+.lock-mode-btn.is-active{color:#0a0a12; background:linear-gradient(135deg,var(--accent-a),var(--accent-b)); border-color:transparent;}
+
 </style>
 </head>
 <body>
@@ -508,6 +588,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
+<!-- editor -->
 <div class="scrim" id="scrim"></div>
 <div class="popover-scrim" id="popoverScrim"></div>
 <div class="editor" id="editor">
@@ -539,6 +620,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
+<!-- context / more popover -->
 <div class="popover glass" id="morePopover">
   <div class="pop-item" data-act="pin">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.5 5.5L19 9l-4 3.5L16 18l-4-3-4 3 1-5.5-4-3.5 5.5-1.5z"/></svg>
@@ -555,12 +637,14 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
+<!-- sort popover -->
 <div class="popover glass" id="sortPopover">
   <div class="pop-item" data-sort="recent">Most recent</div>
   <div class="pop-item" data-sort="title">Title A–Z</div>
   <div class="pop-item" data-sort="oldest">Oldest first</div>
 </div>
 
+<!-- drawing overlay -->
 <div class="draw-overlay" id="drawOverlay">
   <div class="draw-top">
     <div class="icon-btn glass" id="drawCancel">
@@ -592,6 +676,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
+<!-- hidden magic settings -->
 <div class="magic-panel" id="magicSettings">
   <div class="editor-top">
     <div class="icon-btn glass" id="magicSettingsBack">
@@ -600,25 +685,48 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     <h1>Magic Settings</h1>
     <div style="width:40px;"></div>
   </div>
-  <p class="magic-hint">Each effect's body can use <b>$$$$</b> as a placeholder — it's swapped for the word tied to whatever code you enter on the lock screen. Only one effect can be active at a time.</p>
+  <p class="magic-hint">Each effect's body can use <b>$$$$</b> as a placeholder — it's swapped for the word tied to whatever code you enter on the lock screen.</p>
+  
   <div class="lockbg-section">
-    <div class="outs-label">Lock screen background</div>
-    <div class="lockbg-row">
-      <div class="lockbg-thumb" id="lockBgThumb"></div>
-      <div class="lockbg-actions">
-        <div class="btn-pill glass" id="lockBgChangeBtn">Change photo</div>
-        <div class="btn-pill glass" id="lockBgRemoveBtn">Remove</div>
-      </div>
+    <div class="outs-label">Lock Method</div>
+    <div class="lock-mode-toggle">
+      <div class="btn-pill glass lock-mode-btn" id="lockModeClassicBtn">Classic Lock</div>
+      <div class="btn-pill glass lock-mode-btn" id="lockModeHsBtn">Home Screen</div>
     </div>
-    <input type="file" id="lockBgFileInput" accept="image/*" style="display:none;">
-    <p class="effect-body-hint">Shown behind the ambient clock and the PIN screen.</p>
+    
+    <div id="classicLockSettings">
+      <div class="outs-label">Lock screen background</div>
+      <div class="lockbg-row">
+        <div class="lockbg-thumb" id="lockBgThumb"></div>
+        <div class="lockbg-actions">
+          <div class="btn-pill glass" id="lockBgChangeBtn">Change photo</div>
+          <div class="btn-pill glass" id="lockBgRemoveBtn">Remove</div>
+        </div>
+      </div>
+      <input type="file" id="lockBgFileInput" accept="image/*" style="display:none;">
+    </div>
+
+    <div id="hsLockSettings" style="display:none;">
+      <div class="outs-label">Home screen wallpaper</div>
+      <div class="lockbg-row">
+        <div class="lockbg-thumb" id="hsBgThumb"></div>
+        <div class="lockbg-actions">
+          <div class="btn-pill glass" id="hsBgChangeBtn">Change photo</div>
+          <div class="btn-pill glass" id="hsBgRemoveBtn">Remove</div>
+        </div>
+      </div>
+      <input type="file" id="hsBgFileInput" accept="image/*" style="display:none;">
+      <p class="effect-body-hint" style="margin-top:10px;">The 3x3 app grid above the dock acts as a 1-9 dial pad. Swipe starting from any of those 9 icons to log a number. Swipe from anywhere else to log a 0.</p>
+    </div>
   </div>
+  
   <div class="magic-body" id="effectsList"></div>
   <div class="fab main magic-fab" id="newEffectBtn">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0a0a12" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
   </div>
 </div>
 
+<!-- effect editor -->
 <div class="magic-panel" id="effectEditor">
   <div class="editor-top">
     <div class="icon-btn glass" id="effectEditorBack">
@@ -643,7 +751,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       <input class="effect-title-input" id="effectTitleInput" placeholder="Title for the created note (optional)">
       <div class="outs-label">Note body</div>
       <textarea class="effect-body-input" id="effectBodyInput" placeholder="You will choose the word: $$$$"></textarea>
-      <p class="effect-body-hint">This becomes the pinned note that's created when the lock screen PIN decodes to this effect.</p>
       <div class="outs-label">Outs — code → word or sketch</div>
       <div id="outsList"></div>
       <div class="btn-pill glass" id="addOutBtn">+ Add out</div>
@@ -653,8 +760,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       <div class="outs-label">Note title</div>
       <input class="effect-title-input" id="listTitleInput" placeholder="Title for the created list (optional)">
       <div class="outs-label">Force item</div>
-      <input class="effect-title-input" id="listForceWordInput" placeholder="Paste one of the items below - its position will change">
-      <p class="effect-body-hint" id="listForceHint">On the lock screen, enter your PIN while this effect is active. The app reads the last 2 digits to move the force item into position (00 = last item).</p>
+      <input class="effect-title-input" id="listForceWordInput" placeholder="Paste one of the items below">
+      <p class="effect-body-hint" id="listForceHint"></p>
       <div class="outs-label">Items — up to 1000 (one per line)</div>
       <textarea class="effect-body-input" id="listItemsInput" placeholder="Item 1&#10;Item 2&#10;Item 3&#10;..." style="min-height:220px;"></textarea>
       <p class="effect-body-hint" id="listItemsCount">0 items</p>
@@ -662,6 +769,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
 </div>
 
+<!-- magic lock flow: blackout / ambient clock / pin entry -->
 <div id="lockFlow">
   <div class="lock-screen active" id="blackoutScreen"></div>
   <div class="lock-screen" id="ambientScreen">
@@ -683,6 +791,58 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     </div>
     <div class="pin-keypad" id="pinKeypad"></div>
   </div>
+</div>
+
+<!-- Fake Home Screen Flow -->
+<div id="homeScreenFlow">
+  <div id="hsBackground"></div>
+  <div class="hs-top-bar">
+    <div id="hsTopTime">00:00</div>
+    <div class="hs-icons">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9z"/><path d="M12 2C6.48 2 2 6.48 2 12h20c0-5.52-4.48-10-10-10z" opacity="0.3"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h20V2z"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
+  </div>
+  <div class="hs-widget-container">
+    <div class="hs-clock-widget">
+      <div class="hs-clock-item">
+        <div class="hs-clock-face" id="hsClock1">
+          <div class="hs-clock-hand-h"></div>
+          <div class="hs-clock-hand-m"></div>
+        </div>
+        <div class="hs-clock-city">Cairo</div>
+        <div class="hs-clock-sub">Today</div>
+      </div>
+      <div class="hs-clock-item">
+        <div class="hs-clock-face" id="hsClock2">
+          <div class="hs-clock-hand-h"></div>
+          <div class="hs-clock-hand-m"></div>
+        </div>
+        <div class="hs-clock-city">New York</div>
+        <div class="hs-clock-sub">Yesterday</div>
+      </div>
+      <div class="hs-clock-item">
+        <div class="hs-clock-face" id="hsClock3">
+          <div class="hs-clock-hand-h"></div>
+          <div class="hs-clock-hand-m"></div>
+        </div>
+        <div class="hs-clock-city">Moscow</div>
+        <div class="hs-clock-sub">Today</div>
+      </div>
+      <div class="hs-clock-item">
+        <div class="hs-clock-face" id="hsClock4">
+          <div class="hs-clock-hand-h"></div>
+          <div class="hs-clock-hand-m"></div>
+        </div>
+        <div class="hs-clock-city">Kuching</div>
+        <div class="hs-clock-sub">Today</div>
+      </div>
+    </div>
+  </div>
+  <div id="hsPagesWrapper"></div>
+  <div class="hs-dock" id="hsDock"></div>
+  <div id="hsToast">App not installed</div>
 </div>
 
 <script>
@@ -737,7 +897,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 
   /* ---------------- state ---------------- */
   var notes = [];
-  var magic = {effects:[], activeEffectId:null};
+  var magic = {effects:[], activeEffectId:null, lockMode:'classic'}; 
   var state = {
     filter: 'all',
     search: '',
@@ -1375,16 +1535,29 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var effectBodyInput = document.getElementById('effectBodyInput');
   var effectActiveToggle = document.getElementById('effectActiveToggle');
   var outsListEl = document.getElementById('outsList');
+  
+  // Classic Lock BG
   var lockBgThumb = document.getElementById('lockBgThumb');
   var lockBgChangeBtn = document.getElementById('lockBgChangeBtn');
   var lockBgRemoveBtn = document.getElementById('lockBgRemoveBtn');
   var lockBgFileInput = document.getElementById('lockBgFileInput');
+  
+  // Home Screen BG
+  var hsBgThumb = document.getElementById('hsBgThumb');
+  var hsBgChangeBtn = document.getElementById('hsBgChangeBtn');
+  var hsBgRemoveBtn = document.getElementById('hsBgRemoveBtn');
+  var hsBgFileInput = document.getElementById('hsBgFileInput');
 
   var photoPlaceholderSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-4 4-3-3-5 5"/></svg>';
+  
   function renderLockBgUI(){
     lockBgThumb.innerHTML = magic.lockBackground ? '<img src="'+magic.lockBackground+'">' : photoPlaceholderSvg;
     lockBgRemoveBtn.classList.toggle('show', !!magic.lockBackground);
+    
+    hsBgThumb.innerHTML = magic.hsBackground ? '<img src="'+magic.hsBackground+'">' : photoPlaceholderSvg;
+    hsBgRemoveBtn.classList.toggle('show', !!magic.hsBackground);
   }
+  
   function applyLockBackground(){
     var scrimAmbient = "linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.6))";
     var scrimPin = "linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 32%, rgba(0,0,0,0.75))";
@@ -1400,6 +1573,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       pinScreen.style.backgroundImage = '';
     }
   }
+  
   function resizeImageFile(file, maxDim, cb){
     var reader = new FileReader();
     reader.onload = function(e){
@@ -1419,26 +1593,54 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     };
     reader.readAsDataURL(file);
   }
+
+  // Classic BG Listeners
   lockBgChangeBtn.addEventListener('click', function(){ lockBgFileInput.click(); });
   lockBgFileInput.addEventListener('change', function(e){
     var file = e.target.files && e.target.files[0];
     if(!file) return;
     resizeImageFile(file, 1440, function(dataUrl){
-      magic.lockBackground = dataUrl;
-      saveMagic();
-      renderLockBgUI();
-      applyLockBackground();
+      magic.lockBackground = dataUrl; saveMagic(); renderLockBgUI(); applyLockBackground();
     });
     lockBgFileInput.value = '';
   });
   lockBgRemoveBtn.addEventListener('click', function(){
-    magic.lockBackground = null;
-    saveMagic();
-    renderLockBgUI();
-    applyLockBackground();
+    magic.lockBackground = null; saveMagic(); renderLockBgUI(); applyLockBackground();
+  });
+  
+  // HS BG Listeners
+  hsBgChangeBtn.addEventListener('click', function(){ hsBgFileInput.click(); });
+  hsBgFileInput.addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    resizeImageFile(file, 1440, function(dataUrl){
+      magic.hsBackground = dataUrl; saveMagic(); renderLockBgUI();
+    });
+    hsBgFileInput.value = '';
+  });
+  hsBgRemoveBtn.addEventListener('click', function(){
+    magic.hsBackground = null; saveMagic(); renderLockBgUI();
   });
 
+  // Lock Mode Toggle
+  var lockModeClassicBtn = document.getElementById('lockModeClassicBtn');
+  var lockModeHsBtn = document.getElementById('lockModeHsBtn');
+  var classicLockSettings = document.getElementById('classicLockSettings');
+  var hsLockSettings = document.getElementById('hsLockSettings');
+
+  function updateLockModeUI(){
+    if(!magic.lockMode) magic.lockMode = 'classic';
+    var isHs = magic.lockMode === 'hs';
+    lockModeClassicBtn.classList.toggle('is-active', !isHs);
+    lockModeHsBtn.classList.toggle('is-active', isHs);
+    classicLockSettings.style.display = isHs ? 'none' : 'block';
+    hsLockSettings.style.display = isHs ? 'block' : 'none';
+  }
+  lockModeClassicBtn.addEventListener('click', function(){ magic.lockMode = 'classic'; saveMagic(); updateLockModeUI(); });
+  lockModeHsBtn.addEventListener('click', function(){ magic.lockMode = 'hs'; saveMagic(); updateLockModeUI(); });
+
   function openMagicSettings(){
+    updateLockModeUI();
     renderEffectsList();
     renderLockBgUI();
     magicSettings.classList.add('open');
@@ -1523,9 +1725,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       ' · ' + digits + '-digit code';
     if(listForceHint){
       listForceHint.textContent = n === 0
-        ? 'On the lock screen, enter your PIN while this effect is active. Add items below to set this up.'
-        : 'On the lock screen, enter your PIN while this effect is active. The app reads the last ' + digits +
-          ' digits to move the force item into position (' + '0'.repeat(digits) + ' = last item).';
+        ? 'Enter PIN while active. Add items below to set this up.'
+        : 'Reads the last ' + digits + ' digits to move force item into position (' + '0'.repeat(digits) + ' = last item).';
     }
   }
   listTitleInput.addEventListener('input', function(){
@@ -1667,107 +1868,13 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     saveMagic();
   });
 
-  /* ---------------- magic lock flow ---------------- */
-  var lockFlow = document.getElementById('lockFlow');
-  function requestImmersiveFullscreen(){
-    if(document.fullscreenElement || document.webkitFullscreenElement) return;
-    var el = document.documentElement;
-    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if(req){ try{ req.call(el); }catch(e){} }
-  }
-  lockFlow.addEventListener('touchstart', requestImmersiveFullscreen, {passive:true});
-  lockFlow.addEventListener('click', requestImmersiveFullscreen);
-  var blackoutScreen = document.getElementById('blackoutScreen');
-  var ambientScreen = document.getElementById('ambientScreen');
-  var pinScreen = document.getElementById('pinScreen');
-  var pinDots = document.getElementById('pinDots');
-  var pinKeypad = document.getElementById('pinKeypad');
-  var ambientTimeEl = document.getElementById('ambientTime');
-  var ambientDateEl = document.getElementById('ambientDate');
-
-  var pinDigits = '';
-  var clockTimer = null;
-
-  function pad2(n){ return n < 10 ? '0'+n : ''+n; }
-  function updateClocks(){
-    var d = new Date();
-    var t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-    ambientTimeEl.textContent = t;
-    ambientDateEl.textContent = d.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
-  }
-  function startClock(){
-    updateClocks();
-    if(clockTimer) clearInterval(clockTimer);
-    clockTimer = setInterval(updateClocks, 15000);
-  }
-  function showLockScreen(id){
-    [blackoutScreen, ambientScreen, pinScreen].forEach(function(s){ s.classList.remove('active'); });
-    document.getElementById(id).classList.add('active');
-  }
-  function enterLockFlow(){
-    pinDigits = '';
-    renderPinDots();
-    lockFlow.classList.add('open');
-    startClock();
-    showLockScreen('blackoutScreen');
-  }
-  function exitLockFlow(){
-    lockFlow.classList.remove('open');
-    if(clockTimer){ clearInterval(clockTimer); clockTimer = null; }
-  }
-
-  function attachDoubleTap(el, cb){
-    var lastTap = 0;
-    el.addEventListener('touchend', function(e){
-      var now = Date.now();
-      if(now - lastTap < 320){ lastTap = 0; cb(e); }
-      else { lastTap = now; }
-    });
-    el.addEventListener('dblclick', function(e){ cb(e); });
-  }
-
-  attachDoubleTap(blackoutScreen, function(){
-    showLockScreen('ambientScreen');
-  });
-
-  var ambStartY = 0, ambDragging = false;
-  ambientScreen.addEventListener('touchstart', function(e){
-    ambStartY = e.touches[0].clientY;
-    ambDragging = true;
-  }, {passive:true});
-  ambientScreen.addEventListener('touchend', function(e){
-    if(!ambDragging) return;
-    ambDragging = false;
-    var dy = e.changedTouches[0].clientY - ambStartY;
-    if(dy < -60) showLockScreen('pinScreen');
-  }, {passive:true});
-
-  attachDoubleTap(document.getElementById('pinAbortZone'), function(){
-    pinDigits = '';
-    renderPinDots();
-    showLockScreen('blackoutScreen');
-  });
-
-  var keypadKeys = ['1','2','3','4','5','6','7','8','9','empty','0','delete'];
-  keypadKeys.forEach(function(k){
-    var btn = document.createElement('div');
-    btn.className = 'pin-key';
-    if(k === 'empty'){
-      btn.classList.add('empty');
-    } else if(k === 'delete'){
-      btn.classList.add('delete');
-      btn.textContent = 'Delete';
-    } else {
-      btn.textContent = k;
-    }
-    btn.addEventListener('click', function(){ handlePinKey(k); });
-    pinKeypad.appendChild(btn);
-  });
-
+  /* ---------------- magic lock logic (shared) ---------------- */
   function requiredPinLength(){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
-    var len = 4;
-    if(fx && fx.type !== 'list'){
+    var len = 4; // Default PIN length
+    if(fx && fx.type === 'list'){
+      len = listCodeDigits(fx.items);
+    } else if (fx) {
       fx.outs.forEach(function(o){
         if(o.code && String(o.code).length > len) len = String(o.code).length;
       });
@@ -1833,23 +1940,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     }
     saveNotes();
   }
-  function renderPinDots(){
-    pinDots.innerHTML = '';
-    var total = requiredPinLength();
-    for(var i=0;i<total;i++){
-      var dot = document.createElement('div');
-      dot.className = 'pin-dot' + (i < pinDigits.length ? ' filled' : '');
-      pinDots.appendChild(dot);
-    }
-  }
-  function handlePinKey(k){
-    if(k === 'empty') return;
-    if(k === 'delete'){ pinDigits = pinDigits.slice(0,-1); renderPinDots(); return; }
-    if(pinDigits.length >= 16) return;
-    pinDigits += k;
-    renderPinDots();
-    if(pinDigits.length >= requiredPinLength()) resolvePin(pinDigits);
-  }
   function buildEffectHtml(body, word){
     var escapedWord = escapeHtml(word);
     var lines = (body || '').split('\n');
@@ -1894,15 +1984,311 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       state.sort = 'recent';
       sortLabel.textContent = 'Recent';
     }
-    pinDigits = '';
-    exitLockFlow();
+    
+    // Clean up and exit whichever flow was active
+    exitClassicLockFlow();
+    exitHsFlow();
     applyFilter('all');
   }
 
+  /* ---------------- CLASSIC LOCK FLOW ---------------- */
+  var lockFlow = document.getElementById('lockFlow');
+  function requestImmersiveFullscreen(elContainer){
+    if(document.fullscreenElement || document.webkitFullscreenElement) return;
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if(req){ try{ req.call(el); }catch(e){} }
+  }
+  lockFlow.addEventListener('touchstart', function(){ requestImmersiveFullscreen(); }, {passive:true});
+  lockFlow.addEventListener('click', function(){ requestImmersiveFullscreen(); });
+  
+  var blackoutScreen = document.getElementById('blackoutScreen');
+  var ambientScreen = document.getElementById('ambientScreen');
+  var pinScreen = document.getElementById('pinScreen');
+  var pinDots = document.getElementById('pinDots');
+  var pinKeypad = document.getElementById('pinKeypad');
+  var ambientTimeEl = document.getElementById('ambientTime');
+  var ambientDateEl = document.getElementById('ambientDate');
+  var pinDigits = '';
+  var clockTimer = null;
+
+  function pad2(n){ return n < 10 ? '0'+n : ''+n; }
+  function updateClocks(){
+    var d = new Date();
+    var t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    ambientTimeEl.textContent = t;
+    ambientDateEl.textContent = d.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+  }
+  function startClock(){
+    updateClocks();
+    if(clockTimer) clearInterval(clockTimer);
+    clockTimer = setInterval(updateClocks, 15000);
+  }
+  function showLockScreen(id){
+    [blackoutScreen, ambientScreen, pinScreen].forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+  function enterClassicLockFlow(){
+    pinDigits = '';
+    renderPinDots();
+    lockFlow.classList.add('open');
+    startClock();
+    showLockScreen('blackoutScreen');
+  }
+  function exitClassicLockFlow(){
+    lockFlow.classList.remove('open');
+    if(clockTimer){ clearInterval(clockTimer); clockTimer = null; }
+  }
+
+  function attachDoubleTap(el, cb){
+    var lastTap = 0;
+    el.addEventListener('touchend', function(e){
+      var now = Date.now();
+      if(now - lastTap < 320){ lastTap = 0; cb(e); }
+      else { lastTap = now; }
+    });
+    el.addEventListener('dblclick', function(e){ cb(e); });
+  }
+
+  attachDoubleTap(blackoutScreen, function(){ showLockScreen('ambientScreen'); });
+
+  var ambStartY = 0, ambDragging = false;
+  ambientScreen.addEventListener('touchstart', function(e){
+    ambStartY = e.touches[0].clientY; ambDragging = true;
+  }, {passive:true});
+  ambientScreen.addEventListener('touchend', function(e){
+    if(!ambDragging) return;
+    ambDragging = false;
+    var dy = e.changedTouches[0].clientY - ambStartY;
+    if(dy < -60) showLockScreen('pinScreen');
+  }, {passive:true});
+
+  attachDoubleTap(document.getElementById('pinAbortZone'), function(){
+    pinDigits = ''; renderPinDots(); showLockScreen('blackoutScreen');
+  });
+
+  var keypadKeys = ['1','2','3','4','5','6','7','8','9','empty','0','delete'];
+  keypadKeys.forEach(function(k){
+    var btn = document.createElement('div');
+    btn.className = 'pin-key';
+    if(k === 'empty'){ btn.classList.add('empty'); } 
+    else if(k === 'delete'){ btn.classList.add('delete'); btn.textContent = 'Delete'; } 
+    else { btn.textContent = k; }
+    btn.addEventListener('click', function(){ handleClassicPinKey(k); });
+    pinKeypad.appendChild(btn);
+  });
+
+  function renderPinDots(){
+    pinDots.innerHTML = '';
+    var total = requiredPinLength();
+    for(var i=0;i<total;i++){
+      var dot = document.createElement('div');
+      dot.className = 'pin-dot' + (i < pinDigits.length ? ' filled' : '');
+      pinDots.appendChild(dot);
+    }
+  }
+  function handleClassicPinKey(k){
+    if(k === 'empty') return;
+    if(k === 'delete'){ pinDigits = pinDigits.slice(0,-1); renderPinDots(); return; }
+    if(pinDigits.length >= 16) return;
+    pinDigits += k;
+    renderPinDots();
+    if(pinDigits.length >= requiredPinLength()) resolvePin(pinDigits);
+  }
+
+  /* ---------------- FAKE HOME SCREEN FLOW ---------------- */
+  var homeScreenFlow = document.getElementById('homeScreenFlow');
+  var hsBackground = document.getElementById('hsBackground');
+  var hsPagesWrapper = document.getElementById('hsPagesWrapper');
+  var hsDock = document.getElementById('hsDock');
+  var hsToast = document.getElementById('hsToast');
+  
+  homeScreenFlow.addEventListener('touchstart', function(){ requestImmersiveFullscreen(); }, {passive:true});
+  homeScreenFlow.addEventListener('click', function(){ requestImmersiveFullscreen(); });
+
+  var hsPinDigits = '';
+  var hsCurrentPage = 0;
+  var hsTotalPages = 3;
+  
+  // Dummy App Library (Colors & Initials mimic real apps without needing external images)
+  var dummyApps = [
+    {n:"Phone", c:"#34d399", t:"\ud83d\udcde"}, {n:"Messages", c:"#60a5fa", t:"\ud83d\udcac"}, 
+    {n:"Camera", c:"#9ca3af", t:"\ud83d\udcf7"}, {n:"Chrome", c:"#fcd34d", t:"\ud83c\udf10"},
+    {n:"Calendar", c:"#fff", t:"\ud83d\udcc5", clr:"#111"}, {n:"Truecaller", c:"#3b82f6", t:"\u260e"}, 
+    {n:"Maps", c:"#fff", t:"\ud83d\uddfa", clr:"#111"}, {n:"Settings", c:"#4b5563", t:"\u2699"},
+    {n:"Gallery", c:"#f472b6", t:"\ud83c\udfde"}, {n:"Weather", c:"#38bdf8", t:"\u26c5"}, 
+    {n:"Clock", c:"#fff", t:"\u23f0", clr:"#111"}, {n:"Calculator", c:"#fb923c", t:"\u00b1"},
+    {n:"Play Store", c:"#fff", t:"\u25b6", clr:"#111"}, {n:"Spotify", c:"#10b981", t:"\u266b"}, 
+    {n:"WhatsApp", c:"#22c55e", t:"\ud83d\udcac"}, {n:"Instagram", c:"#db2777", t:"\ud83d\udcf7"},
+    {n:"TikTok", c:"#000", t:"\u266a"}, {n:"YouTube", c:"#ef4444", t:"\u25b6"}, 
+    {n:"Netflix", c:"#000", t:"N", clr:"#e50914"}, {n:"Gmail", c:"#fff", t:"M", clr:"#ea4335"},
+    {n:"Facebook", c:"#1877f2", t:"f"}, {n:"X", c:"#000", t:"\ud835\udd4f"}, 
+    {n:"Drive", c:"#fff", t:"\u25b3", clr:"#111"}, {n:"Wallet", c:"#000", t:"\ud83d\udcb3"}
+  ];
+  
+  function getAppHTML(app, isNotes){
+    if(isNotes) return '<div class="hs-app-wrapper is-notes"><div class="hs-app-icon" style="background:#111;"><img src="icons/icon-192.png"></div><div class="hs-app-label">Notes</div></div>';
+    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="background:'+app.c+'; color:'+(app.clr||'#fff')+'; font-size:26px; font-weight:800;">'+app.t+'</div><div class="hs-app-label">'+app.n+'</div></div>';
+  }
+
+  function renderHomeScreen(){
+    hsPinDigits = '';
+    hsCurrentPage = 0;
+    hsBackground.style.backgroundImage = magic.hsBackground ? "url('" + magic.hsBackground + "')" : "linear-gradient(180deg, #1e293b, #0f172a)";
+    
+    // Update top bar clock
+    var d = new Date();
+    document.getElementById('hsTopTime').textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    
+    // Update live widget clocks based on standard UTC offsets (simplified)
+    var u = d.getUTCHours();
+    var m = d.getMinutes();
+    function setHands(id, h){
+      var hDeg = (h % 12) * 30 + (m * 0.5);
+      var mDeg = m * 6;
+      document.querySelector('#'+id+' .hs-clock-hand-h').style.transform = 'rotate('+hDeg+'deg)';
+      document.querySelector('#'+id+' .hs-clock-hand-m').style.transform = 'rotate('+mDeg+'deg)';
+    }
+    setHands('hsClock1', u + 3); // Cairo (+3)
+    setHands('hsClock2', u - 4); // NY (-4)
+    setHands('hsClock3', u + 3); // Moscow (+3)
+    setHands('hsClock4', u + 8); // Kuching (+8)
+
+    // Calculate Pages
+    var requiredLen = requiredPinLength();
+    hsTotalPages = requiredLen + 1; // n swipes + 1 final page for the app
+    
+    hsPagesWrapper.innerHTML = '';
+    hsPagesWrapper.style.width = (hsTotalPages * 100) + 'vw';
+    hsPagesWrapper.style.transform = 'translateX(0)';
+
+    var appIdx = 0;
+    for(var p=0; p<hsTotalPages; p++){
+      var pageEl = document.createElement('div');
+      pageEl.className = 'hs-page';
+      var gridEl = document.createElement('div');
+      gridEl.className = 'hs-grid';
+      
+      for(var i=0; i<24; i++){
+        var isLastPageAndSlot = (p === hsTotalPages - 1 && i === 18); // Arbitrary slot on final page
+        if(isLastPageAndSlot){
+          gridEl.innerHTML += getAppHTML(null, true);
+        } else {
+          gridEl.innerHTML += getAppHTML(dummyApps[appIdx % dummyApps.length], false);
+          appIdx++;
+        }
+      }
+      pageEl.appendChild(gridEl);
+      hsPagesWrapper.appendChild(pageEl);
+    }
+    
+    // Dock
+    hsDock.innerHTML = '';
+    for(var d=0; d<4; d++){
+      hsDock.innerHTML += getAppHTML(dummyApps[appIdx % dummyApps.length], false);
+      appIdx++;
+    }
+    
+    bindHsEvents();
+  }
+  
+  function showHsToast(){
+    hsToast.classList.add('show');
+    setTimeout(function(){ hsToast.classList.remove('show'); }, 2000);
+  }
+
+  function bindHsEvents(){
+    var startX = 0, startY = 0, isDragging = false, touchZoneVal = null;
+    
+    hsPagesWrapper.addEventListener('touchstart', function(e){
+      if(hsCurrentPage >= hsTotalPages - 1) return; // Final page locked
+      var t = e.touches[0];
+      startX = t.clientX; startY = t.clientY;
+      isDragging = true;
+      
+      // Calculate Zone (Bottom right 3x3 of the 4x6 grid)
+      // Screen width divided by 4 cols, Grid is above dock.
+      var w = window.innerWidth, h = window.innerHeight;
+      var dockHeight = 110; 
+      var gridBottom = h - dockHeight;
+      var rowHeight = 76 + 8; // approx row height + gap
+      var colWidth = w / 4;
+      
+      var col = Math.floor(startX / colWidth) + 1; // 1 to 4
+      var gridY = gridBottom - startY;
+      var rowFromBottom = Math.floor(gridY / rowHeight) + 1; // 1 to 6 (bottom up)
+      
+      // Target: Cols 2,3,4. Rows 1,2,3 from bottom (which are rows 4,5,6 from top)
+      // Standard Dial Pad:
+      // Row 3 from bottom (top of pad): 1, 2, 3
+      // Row 2 from bottom (mid of pad): 4, 5, 6
+      // Row 1 from bottom (bot of pad): 7, 8, 9
+      if(col >= 2 && col <= 4 && rowFromBottom >= 1 && rowFromBottom <= 3 && startY < gridBottom){
+        var padCol = col - 1; // 1, 2, 3
+        var padRow = 4 - rowFromBottom; // 1, 2, 3
+        touchZoneVal = ((padRow - 1) * 3) + padCol; // 1 to 9
+      } else {
+        touchZoneVal = 0; // Anywhere else
+      }
+    }, {passive:true});
+
+    hsPagesWrapper.addEventListener('touchend', function(e){
+      if(!isDragging) return;
+      isDragging = false;
+      var endX = e.changedTouches[0].clientX;
+      var deltaX = endX - startX;
+      
+      if(deltaX < -40 && hsCurrentPage < hsTotalPages - 1){
+        // Swiped Left - Log Digit & Move Page
+        hsPinDigits += touchZoneVal;
+        hsCurrentPage++;
+        hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * 100) + 'vw)';
+      } else if (Math.abs(deltaX) < 10) {
+        // Just a tap
+        if(e.target.closest('.dummy-app')){
+          showHsToast();
+        } else if (e.target.closest('.is-notes')){
+          executeHsPin();
+        }
+      }
+    }, {passive:true});
+    
+    // Notes App click override for extra safety
+    var notesIcon = hsPagesWrapper.querySelector('.is-notes');
+    if(notesIcon){
+      notesIcon.addEventListener('click', function(e){
+        e.stopPropagation();
+        executeHsPin();
+      });
+    }
+    
+    // Dock dummy clicks
+    hsDock.querySelectorAll('.dummy-app').forEach(function(el){
+      el.addEventListener('click', showHsToast);
+    });
+  }
+  
+  function executeHsPin(){
+    // if the user reached final page but length is too short, pad it (should mathematically be exact though)
+    while(hsPinDigits.length < requiredPinLength()){ hsPinDigits += '0'; }
+    resolvePin(hsPinDigits);
+  }
+
+  function enterHsFlow(){
+    renderHomeScreen();
+    homeScreenFlow.classList.add('open');
+  }
+  function exitHsFlow(){
+    homeScreenFlow.classList.remove('open');
+  }
+
+
+  /* ---------------- MASTER LOCK TRIGGER ---------------- */
   attachDoubleTap(document.getElementById('pageTitle'), function(){
     if(editor.classList.contains('open')) closeEditor();
     closePopovers();
-    enterLockFlow();
+    if(magic.lockMode === 'hs') enterHsFlow();
+    else enterClassicLockFlow();
   });
 
   /* ---------------- theme toggle ---------------- */
@@ -1972,7 +2358,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     notes = savedN || seedNotes();
 
     var savedM = await dbGet("liquidnotes_magic_v1");
-    magic = savedM || {effects:[], activeEffectId:null};
+    magic = savedM || {effects:[], activeEffectId:null, lockMode:'classic'};
 
     var savedT = await dbGet("liquidnotes_theme");
     applyTheme(savedT || 'dark');
