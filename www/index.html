@@ -474,8 +474,10 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   position:absolute; inset:0; background-size:cover; background-position:center;
   z-index:1; filter:brightness(0.85);
 }
+
+/* Status Bar pinned absolutely to the top edge */
 .hs-top-bar{
-  position:absolute; top:env(safe-area-inset-top, 0px); left:16px; right:16px; padding-top:6px;
+  position:absolute; top:0; left:16px; right:16px; height:32px;
   display:flex; justify-content:space-between; align-items:center; z-index:5;
   color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
 }
@@ -2116,16 +2118,16 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var hsTotalPages = 3;
   var hsIsAnimating = false;
   
-  // 75 hyper-accurate SVGs directly from simple-icons CDN mapped to correct brand background colors
+  // 75 real, unmodified app SVGs mapped to white backgrounds with their original colors
   var realApps = [
-    {n:"Chrome", s:"googlechrome", b:"#fff", c:""}, {n:"WhatsApp", s:"whatsapp", b:"#25D366", c:"white"}, {n:"Instagram", s:"instagram", b:"#E1306C", c:"white"}, {n:"YouTube", s:"youtube", b:"#FF0000", c:"white"}, {n:"Netflix", s:"netflix", b:"#000", c:"#E50914"}, {n:"Spotify", s:"spotify", b:"#1DB954", c:"white"}, {n:"TikTok", s:"tiktok", b:"#000", c:"white"}, {n:"Facebook", s:"facebook", b:"#1877F2", c:"white"}, {n:"X", s:"x", b:"#000", c:"white"}, {n:"Snapchat", s:"snapchat", b:"#FFFC00", c:"#000"}, {n:"Maps", s:"googlemaps", b:"#fff", c:""}, {n:"Gmail", s:"gmail", b:"#fff", c:""}, {n:"Photos", s:"googlephotos", b:"#fff", c:""}, {n:"Drive", s:"googledrive", b:"#fff", c:""}, {n:"Calendar", s:"googlecalendar", b:"#fff", c:""}, {n:"Play Store", s:"googleplay", b:"#fff", c:""}, {n:"Slack", s:"slack", b:"#fff", c:""}, {n:"Zoom", s:"zoom", b:"#2D8CFF", c:"white"}, {n:"Uber", s:"uber", b:"#000", c:"white"}, {n:"Airbnb", s:"airbnb", b:"#FF5A5F", c:"white"}, {n:"Pinterest", s:"pinterest", b:"#E60023", c:"white"}, {n:"Discord", s:"discord", b:"#5865F2", c:"white"}, {n:"Telegram", s:"telegram", b:"#26A5E4", c:"white"}, {n:"Reddit", s:"reddit", b:"#FF4500", c:"white"}, {n:"LinkedIn", s:"linkedin", b:"#0A66C2", c:"white"}, {n:"Twitch", s:"twitch", b:"#9146FF", c:"white"}, {n:"Amazon", s:"amazon", b:"#fff", c:"#FF9900"}, {n:"eBay", s:"ebay", b:"#fff", c:""}, {n:"PayPal", s:"paypal", b:"#00457C", c:"white"}, {n:"Cash App", s:"cashapp", b:"#00D632", c:"white"}, {n:"Venmo", s:"venmo", b:"#008CFF", c:"white"}, {n:"Tinder", s:"tinder", b:"#FF6B6B", c:"white"}, {n:"Bumble", s:"bumble", b:"#FFC629", c:"white"}, {n:"DoorDash", s:"doordash", b:"#FF3008", c:"white"}, {n:"Lyft", s:"lyft", b:"#FF00BF", c:"white"}, {n:"Waze", s:"waze", b:"#33CCFF", c:"white"}, {n:"Duolingo", s:"duolingo", b:"#58CC02", c:"white"}, {n:"Shazam", s:"shazam", b:"#0088FF", c:"white"}, {n:"SoundCloud", s:"soundcloud", b:"#FF5500", c:"white"}, {n:"Tidal", s:"tidal", b:"#000", c:"white"}, {n:"Viber", s:"viber", b:"#665CAC", c:"white"}, {n:"Line", s:"line", b:"#00C300", c:"white"}, {n:"WeChat", s:"wechat", b:"#07C160", c:"white"}, {n:"Skype", s:"skype", b:"#00AFF0", c:"white"}, {n:"Signal", s:"signal", b:"#3A76F0", c:"white"}, {n:"Messenger", s:"messenger", b:"#00B2FF", c:"white"}, {n:"Roblox", s:"roblox", b:"#fff", c:""}, {n:"Minecraft", s:"minecraft", b:"#111", c:"white"}, {n:"Steam", s:"steam", b:"#171A21", c:"white"}, {n:"Xbox", s:"xbox", b:"#107C10", c:"white"}, {n:"PlayStation", s:"playstation", b:"#003791", c:"white"}, {n:"Nintendo", s:"nintendo", b:"#E60012", c:"white"}, {n:"Canva", s:"canva", b:"#00C4CC", c:"white"}, {n:"Picsart", s:"picsart", b:"#fff", c:""}, {n:"Lightroom", s:"adobelightroom", b:"#31A8FF", c:"white"}, {n:"VSCO", s:"vsco", b:"#000", c:"white"}, {n:"Trello", s:"trello", b:"#0052CC", c:"white"}, {n:"Asana", s:"asana", b:"#F06A6A", c:"white"}, {n:"Notion", s:"notion", b:"#fff", c:""}, {n:"Evernote", s:"evernote", b:"#00A82D", c:"white"}, {n:"Dropbox", s:"dropbox", b:"#0061FF", c:"white"}, {n:"Box", s:"box", b:"#0061D5", c:"white"}, {n:"OneDrive", s:"microsoftonedrive", b:"#0078D4", c:"white"}, {n:"Teams", s:"microsoftteams", b:"#6264A7", c:"white"}, {n:"Outlook", s:"microsoftoutlook", b:"#fff", c:""}, {n:"Word", s:"microsoftword", b:"#2B579A", c:"white"}, {n:"Excel", s:"microsoftexcel", b:"#217346", c:"white"}, {n:"PowerPoint", s:"microsoftpowerpoint", b:"#B7472A", c:"white"}, {n:"ChatGPT", s:"openai", b:"#10A37F", c:"white"}, {n:"CapCut", s:"capcut", b:"#000", c:"white"}, {n:"GitHub", s:"github", b:"#181717", c:"white"}, {n:"Figma", s:"figma", b:"#F24E1E", c:"white"}, {n:"Strava", s:"strava", b:"#FC4C02", c:"white"}, {n:"BeReal", s:"bereal", b:"#000", c:"white"}
+    {n:"Chrome", s:"googlechrome", b:"#fff", c:""}, {n:"WhatsApp", s:"whatsapp", b:"#fff", c:""}, {n:"Instagram", s:"instagram", b:"#fff", c:""}, {n:"YouTube", s:"youtube", b:"#fff", c:""}, {n:"Netflix", s:"netflix", b:"#fff", c:""}, {n:"Spotify", s:"spotify", b:"#fff", c:""}, {n:"TikTok", s:"tiktok", b:"#fff", c:""}, {n:"Facebook", s:"facebook", b:"#fff", c:""}, {n:"X", s:"x", b:"#fff", c:""}, {n:"Snapchat", s:"snapchat", b:"#fff", c:""}, {n:"Maps", s:"googlemaps", b:"#fff", c:""}, {n:"Gmail", s:"gmail", b:"#fff", c:""}, {n:"Photos", s:"googlephotos", b:"#fff", c:""}, {n:"Drive", s:"googledrive", b:"#fff", c:""}, {n:"Calendar", s:"googlecalendar", b:"#fff", c:""}, {n:"Play Store", s:"googleplay", b:"#fff", c:""}, {n:"Slack", s:"slack", b:"#fff", c:""}, {n:"Zoom", s:"zoom", b:"#fff", c:""}, {n:"Uber", s:"uber", b:"#fff", c:""}, {n:"Airbnb", s:"airbnb", b:"#fff", c:""}, {n:"Pinterest", s:"pinterest", b:"#fff", c:""}, {n:"Discord", s:"discord", b:"#fff", c:""}, {n:"Telegram", s:"telegram", b:"#fff", c:""}, {n:"Reddit", s:"reddit", b:"#fff", c:""}, {n:"LinkedIn", s:"linkedin", b:"#fff", c:""}, {n:"Twitch", s:"twitch", b:"#fff", c:""}, {n:"Amazon", s:"amazon", b:"#fff", c:""}, {n:"eBay", s:"ebay", b:"#fff", c:""}, {n:"PayPal", s:"paypal", b:"#fff", c:""}, {n:"Cash App", s:"cashapp", b:"#fff", c:""}, {n:"Venmo", s:"venmo", b:"#fff", c:""}, {n:"Tinder", s:"tinder", b:"#fff", c:""}, {n:"Bumble", s:"bumble", b:"#fff", c:""}, {n:"DoorDash", s:"doordash", b:"#fff", c:""}, {n:"Lyft", s:"lyft", b:"#fff", c:""}, {n:"Waze", s:"waze", b:"#fff", c:""}, {n:"Duolingo", s:"duolingo", b:"#fff", c:""}, {n:"Shazam", s:"shazam", b:"#fff", c:""}, {n:"SoundCloud", s:"soundcloud", b:"#fff", c:""}, {n:"Tidal", s:"tidal", b:"#fff", c:""}, {n:"Viber", s:"viber", b:"#fff", c:""}, {n:"Line", s:"line", b:"#fff", c:""}, {n:"WeChat", s:"wechat", b:"#fff", c:""}, {n:"Skype", s:"skype", b:"#fff", c:""}, {n:"Signal", s:"signal", b:"#fff", c:""}, {n:"Messenger", s:"messenger", b:"#fff", c:""}, {n:"Roblox", s:"roblox", b:"#fff", c:""}, {n:"Minecraft", s:"minecraft", b:"#fff", c:""}, {n:"Steam", s:"steam", b:"#fff", c:""}, {n:"Xbox", s:"xbox", b:"#fff", c:""}, {n:"PlayStation", s:"playstation", b:"#fff", c:""}, {n:"Nintendo", s:"nintendo", b:"#fff", c:""}, {n:"Canva", s:"canva", b:"#fff", c:""}, {n:"Picsart", s:"picsart", b:"#fff", c:""}, {n:"Lightroom", s:"adobelightroom", b:"#fff", c:""}, {n:"VSCO", s:"vsco", b:"#fff", c:""}, {n:"Trello", s:"trello", b:"#fff", c:""}, {n:"Asana", s:"asana", b:"#fff", c:""}, {n:"Notion", s:"notion", b:"#fff", c:""}, {n:"Evernote", s:"evernote", b:"#fff", c:""}, {n:"Dropbox", s:"dropbox", b:"#fff", c:""}, {n:"Box", s:"box", b:"#fff", c:""}, {n:"OneDrive", s:"microsoftonedrive", b:"#fff", c:""}, {n:"Teams", s:"microsoftteams", b:"#fff", c:""}, {n:"Outlook", s:"microsoftoutlook", b:"#fff", c:""}, {n:"Word", s:"microsoftword", b:"#fff", c:""}, {n:"Excel", s:"microsoftexcel", b:"#fff", c:""}, {n:"PowerPoint", s:"microsoftpowerpoint", b:"#fff", c:""}, {n:"ChatGPT", s:"openai", b:"#fff", c:""}, {n:"CapCut", s:"capcut", b:"#fff", c:""}, {n:"GitHub", s:"github", b:"#fff", c:""}, {n:"Figma", s:"figma", b:"#fff", c:""}, {n:"Strava", s:"strava", b:"#fff", c:""}, {n:"BeReal", s:"bereal", b:"#fff", c:""}
   ];
 
-  // Core apps embedded locally as pure SVGs
+  // Core apps correctly scaled using real Android vector paths
   var coreApps = [
-    {n:"Phone", svg:'<svg viewBox="0 0 24 24"><path d="M6.6 8.3c.6-1.5 2-2.3 3.5-1.9.5.1 1 .5 1.2 1 .4.8.9 2 1.2 2.9.2.7-.1 1.5-.7 1.9l-1 .7c.6 1.4 1.7 2.5 3.1 3.1l.7-1c.4-.6 1.2-.9 1.9-.7.9.3 2.1.8 2.9 1.2.5.2.9.7 1 1.2.4 1.5-.4 2.9-1.9 3.5-2.8 1-6.7-.4-9.8-3.5C5.8 13.6 4.4 9.7 5.4 6.9z" fill="#fff"/></svg>', b:"#34d399"},
-    {n:"Messages", svg:'<svg viewBox="0 0 24 24"><path d="M6 16.5c0 1.5 1.5 2.5 3 2.5h8c1.5 0 2.5-1 2.5-2.5v-7C19.5 8 18.5 7 17 7H7C5.5 7 4.5 8 4.5 9.5v5l-1.5 3c-.2.5.2 1 .7 1h2v-2z" fill="#fff"/></svg>', b:"#1b6ef3"},
-    {n:"Camera", svg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="#fff"/><circle cx="17.5" cy="7.5" r="1" fill="#fff"/><path d="M19 6h-2.2l-1.4-1.8A1 1 0 0014.6 4h-5.2a1 1 0 00-.8.4L7.2 6H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7 12c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6z" fill="#fff"/></svg>', b:"#4b5563"},
+    {n:"Phone", svg:'<svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="#fff"/></svg>', b:"#34d399"},
+    {n:"Messages", svg:'<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" fill="#fff"/></svg>', b:"#1b6ef3"},
+    {n:"Camera", svg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="#fff"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" fill="#fff"/></svg>', b:"#4b5563"},
     {n:"Settings", svg:'<svg viewBox="0 0 24 24"><path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2.1-1.6c.2-.2.3-.4.2-.6l-2-3.5c-.1-.2-.3-.3-.6-.2l-2.5 1c-.5-.4-1.1-.7-1.7-1l-.4-2.7c0-.2-.2-.4-.5-.4h-4c-.3 0-.5.2-.5.4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1c-.2-.1-.5 0-.6.2l-2 3.5c-.1.2 0 .5.2.6l2.1 1.6c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2.1 1.6c-.2.2-.3.4-.2.6l2 3.5c.1.2.3.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5c.1-.2 0-.5-.2-.6l-2.1-1.6zM12 15.5A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z" fill="#fff"/></svg>', b:"#4b5563"}
   ];
 
@@ -2160,7 +2162,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     return padded;
   }
 
-  // Pre-shuffle the pool ONCE so the apps stay static every time you open it
+  // Pre-shuffle the pool ONCE so the apps stay absolutely static every time you open it
   var staticAppPool = null;
   function getStaticAppPool() {
     if(!staticAppPool) { staticAppPool = [...realApps].sort(() => 0.5 - Math.random()); }
@@ -2248,7 +2250,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       hsPagesWrapper.appendChild(pageEl);
     }
     
-    // Fixed Core Dock with Lock Icon
+    // Fixed Core Dock with Lock Icon shortcut
     hsDock.innerHTML = '';
     for(var dIdx=0; dIdx<4; dIdx++){
       if(dIdx === 2) {
@@ -2266,7 +2268,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     setTimeout(function(){ hsToast.classList.remove('show'); }, 2000);
   }
 
-  // Ensures events are only bound once to prevent skipping
+  // Ensures events are only bound once to prevent skipping bugs
   var hsEventsBound = false;
   
   function bindHsEvents(){
