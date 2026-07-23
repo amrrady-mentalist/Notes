@@ -475,9 +475,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   z-index:1; filter:brightness(0.85);
 }
 
-/* Status Bar pinned absolutely to the top edge */
+/* Status Bar pushed strictly to absolute top edge (approx 2mm down) */
 .hs-top-bar{
-  position:absolute; top:0; left:16px; right:16px; height:32px;
+  position:absolute; top:calc(env(safe-area-inset-top, 0px) + 12px); left:16px; right:16px; height:32px;
   display:flex; justify-content:space-between; align-items:center; z-index:5;
   color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
 }
@@ -1948,6 +1948,10 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   }
   
   function resolvePin(pin){
+    // Ensures we don't open the editor if it was left open in the background
+    if(editor.classList.contains('open')) closeEditor();
+    closePopovers();
+
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     
     var codeLen = 2;
@@ -2118,12 +2122,85 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var hsTotalPages = 3;
   var hsIsAnimating = false;
   
-  // 75 real, unmodified app SVGs mapped to white backgrounds with their original colors
+  // 75 real apps mapped to their official brand background colors with a bulletproof Google Favicon fallback
   var realApps = [
-    {n:"Chrome", s:"googlechrome", b:"#fff", c:""}, {n:"WhatsApp", s:"whatsapp", b:"#fff", c:""}, {n:"Instagram", s:"instagram", b:"#fff", c:""}, {n:"YouTube", s:"youtube", b:"#fff", c:""}, {n:"Netflix", s:"netflix", b:"#fff", c:""}, {n:"Spotify", s:"spotify", b:"#fff", c:""}, {n:"TikTok", s:"tiktok", b:"#fff", c:""}, {n:"Facebook", s:"facebook", b:"#fff", c:""}, {n:"X", s:"x", b:"#fff", c:""}, {n:"Snapchat", s:"snapchat", b:"#fff", c:""}, {n:"Maps", s:"googlemaps", b:"#fff", c:""}, {n:"Gmail", s:"gmail", b:"#fff", c:""}, {n:"Photos", s:"googlephotos", b:"#fff", c:""}, {n:"Drive", s:"googledrive", b:"#fff", c:""}, {n:"Calendar", s:"googlecalendar", b:"#fff", c:""}, {n:"Play Store", s:"googleplay", b:"#fff", c:""}, {n:"Slack", s:"slack", b:"#fff", c:""}, {n:"Zoom", s:"zoom", b:"#fff", c:""}, {n:"Uber", s:"uber", b:"#fff", c:""}, {n:"Airbnb", s:"airbnb", b:"#fff", c:""}, {n:"Pinterest", s:"pinterest", b:"#fff", c:""}, {n:"Discord", s:"discord", b:"#fff", c:""}, {n:"Telegram", s:"telegram", b:"#fff", c:""}, {n:"Reddit", s:"reddit", b:"#fff", c:""}, {n:"LinkedIn", s:"linkedin", b:"#fff", c:""}, {n:"Twitch", s:"twitch", b:"#fff", c:""}, {n:"Amazon", s:"amazon", b:"#fff", c:""}, {n:"eBay", s:"ebay", b:"#fff", c:""}, {n:"PayPal", s:"paypal", b:"#fff", c:""}, {n:"Cash App", s:"cashapp", b:"#fff", c:""}, {n:"Venmo", s:"venmo", b:"#fff", c:""}, {n:"Tinder", s:"tinder", b:"#fff", c:""}, {n:"Bumble", s:"bumble", b:"#fff", c:""}, {n:"DoorDash", s:"doordash", b:"#fff", c:""}, {n:"Lyft", s:"lyft", b:"#fff", c:""}, {n:"Waze", s:"waze", b:"#fff", c:""}, {n:"Duolingo", s:"duolingo", b:"#fff", c:""}, {n:"Shazam", s:"shazam", b:"#fff", c:""}, {n:"SoundCloud", s:"soundcloud", b:"#fff", c:""}, {n:"Tidal", s:"tidal", b:"#fff", c:""}, {n:"Viber", s:"viber", b:"#fff", c:""}, {n:"Line", s:"line", b:"#fff", c:""}, {n:"WeChat", s:"wechat", b:"#fff", c:""}, {n:"Skype", s:"skype", b:"#fff", c:""}, {n:"Signal", s:"signal", b:"#fff", c:""}, {n:"Messenger", s:"messenger", b:"#fff", c:""}, {n:"Roblox", s:"roblox", b:"#fff", c:""}, {n:"Minecraft", s:"minecraft", b:"#fff", c:""}, {n:"Steam", s:"steam", b:"#fff", c:""}, {n:"Xbox", s:"xbox", b:"#fff", c:""}, {n:"PlayStation", s:"playstation", b:"#fff", c:""}, {n:"Nintendo", s:"nintendo", b:"#fff", c:""}, {n:"Canva", s:"canva", b:"#fff", c:""}, {n:"Picsart", s:"picsart", b:"#fff", c:""}, {n:"Lightroom", s:"adobelightroom", b:"#fff", c:""}, {n:"VSCO", s:"vsco", b:"#fff", c:""}, {n:"Trello", s:"trello", b:"#fff", c:""}, {n:"Asana", s:"asana", b:"#fff", c:""}, {n:"Notion", s:"notion", b:"#fff", c:""}, {n:"Evernote", s:"evernote", b:"#fff", c:""}, {n:"Dropbox", s:"dropbox", b:"#fff", c:""}, {n:"Box", s:"box", b:"#fff", c:""}, {n:"OneDrive", s:"microsoftonedrive", b:"#fff", c:""}, {n:"Teams", s:"microsoftteams", b:"#fff", c:""}, {n:"Outlook", s:"microsoftoutlook", b:"#fff", c:""}, {n:"Word", s:"microsoftword", b:"#fff", c:""}, {n:"Excel", s:"microsoftexcel", b:"#fff", c:""}, {n:"PowerPoint", s:"microsoftpowerpoint", b:"#fff", c:""}, {n:"ChatGPT", s:"openai", b:"#fff", c:""}, {n:"CapCut", s:"capcut", b:"#fff", c:""}, {n:"GitHub", s:"github", b:"#fff", c:""}, {n:"Figma", s:"figma", b:"#fff", c:""}, {n:"Strava", s:"strava", b:"#fff", c:""}, {n:"BeReal", s:"bereal", b:"#fff", c:""}
+    {n:"Chrome", s:"googlechrome", b:"#fff", c:"", d:"google.com"},
+    {n:"WhatsApp", s:"whatsapp", b:"#25D366", c:"white", d:"whatsapp.com"},
+    {n:"Instagram", s:"instagram", b:"#E1306C", c:"white", d:"instagram.com"},
+    {n:"YouTube", s:"youtube", b:"#FF0000", c:"white", d:"youtube.com"},
+    {n:"Netflix", s:"netflix", b:"#000", c:"#E50914", d:"netflix.com"},
+    {n:"Spotify", s:"spotify", b:"#1DB954", c:"white", d:"spotify.com"},
+    {n:"TikTok", s:"tiktok", b:"#000", c:"white", d:"tiktok.com"},
+    {n:"Facebook", s:"facebook", b:"#1877F2", c:"white", d:"facebook.com"},
+    {n:"X", s:"x", b:"#000", c:"white", d:"x.com"},
+    {n:"Snapchat", s:"snapchat", b:"#FFFC00", c:"#000", d:"snapchat.com"},
+    {n:"Maps", s:"googlemaps", b:"#fff", c:"", d:"maps.google.com"},
+    {n:"Gmail", s:"gmail", b:"#fff", c:"", d:"mail.google.com"},
+    {n:"Photos", s:"googlephotos", b:"#fff", c:"", d:"photos.google.com"},
+    {n:"Drive", s:"googledrive", b:"#fff", c:"", d:"drive.google.com"},
+    {n:"Calendar", s:"googlecalendar", b:"#fff", c:"", d:"calendar.google.com"},
+    {n:"Play Store", s:"googleplay", b:"#fff", c:"", d:"play.google.com"},
+    {n:"Slack", s:"slack", b:"#fff", c:"", d:"slack.com"},
+    {n:"Zoom", s:"zoom", b:"#2D8CFF", c:"white", d:"zoom.us"},
+    {n:"Uber", s:"uber", b:"#000", c:"white", d:"uber.com"},
+    {n:"Airbnb", s:"airbnb", b:"#FF5A5F", c:"white", d:"airbnb.com"},
+    {n:"Pinterest", s:"pinterest", b:"#E60023", c:"white", d:"pinterest.com"},
+    {n:"Discord", s:"discord", b:"#5865F2", c:"white", d:"discord.com"},
+    {n:"Telegram", s:"telegram", b:"#26A5E4", c:"white", d:"telegram.org"},
+    {n:"Reddit", s:"reddit", b:"#FF4500", c:"white", d:"reddit.com"},
+    {n:"LinkedIn", s:"linkedin", b:"#0A66C2", c:"white", d:"linkedin.com"},
+    {n:"Twitch", s:"twitch", b:"#9146FF", c:"white", d:"twitch.tv"},
+    {n:"Amazon", s:"amazon", b:"#fff", c:"#FF9900", d:"amazon.com"},
+    {n:"eBay", s:"ebay", b:"#fff", c:"", d:"ebay.com"},
+    {n:"PayPal", s:"paypal", b:"#00457C", c:"white", d:"paypal.com"},
+    {n:"Cash App", s:"cashapp", b:"#00D632", c:"white", d:"cash.app"},
+    {n:"Venmo", s:"venmo", b:"#008CFF", c:"white", d:"venmo.com"},
+    {n:"Tinder", s:"tinder", b:"#FF6B6B", c:"white", d:"tinder.com"},
+    {n:"Bumble", s:"bumble", b:"#FFC629", c:"white", d:"bumble.com"},
+    {n:"DoorDash", s:"doordash", b:"#FF3008", c:"white", d:"doordash.com"},
+    {n:"Lyft", s:"lyft", b:"#FF00BF", c:"white", d:"lyft.com"},
+    {n:"Waze", s:"waze", b:"#33CCFF", c:"white", d:"waze.com"},
+    {n:"Duolingo", s:"duolingo", b:"#58CC02", c:"white", d:"duolingo.com"},
+    {n:"Shazam", s:"shazam", b:"#0088FF", c:"white", d:"shazam.com"},
+    {n:"SoundCloud", s:"soundcloud", b:"#FF5500", c:"white", d:"soundcloud.com"},
+    {n:"Tidal", s:"tidal", b:"#000", c:"white", d:"tidal.com"},
+    {n:"Viber", s:"viber", b:"#665CAC", c:"white", d:"viber.com"},
+    {n:"Line", s:"line", b:"#00C300", c:"white", d:"line.me"},
+    {n:"WeChat", s:"wechat", b:"#07C160", c:"white", d:"wechat.com"},
+    {n:"Skype", s:"skype", b:"#00AFF0", c:"white", d:"skype.com"},
+    {n:"Signal", s:"signal", b:"#3A76F0", c:"white", d:"signal.org"},
+    {n:"Messenger", s:"messenger", b:"#00B2FF", c:"white", d:"messenger.com"},
+    {n:"Roblox", s:"roblox", b:"#fff", c:"", d:"roblox.com"},
+    {n:"Minecraft", s:"minecraft", b:"#111", c:"white", d:"minecraft.net"},
+    {n:"Steam", s:"steam", b:"#171A21", c:"white", d:"store.steampowered.com"},
+    {n:"Xbox", s:"xbox", b:"#107C10", c:"white", d:"xbox.com"},
+    {n:"PlayStation", s:"playstation", b:"#003791", c:"white", d:"playstation.com"},
+    {n:"Nintendo", s:"nintendo", b:"#E60012", c:"white", d:"nintendo.com"},
+    {n:"Canva", s:"canva", b:"#00C4CC", c:"white", d:"canva.com"},
+    {n:"Picsart", s:"picsart", b:"#fff", c:"", d:"picsart.com"},
+    {n:"Lightroom", s:"adobelightroom", b:"#31A8FF", c:"white", d:"lightroom.adobe.com"},
+    {n:"VSCO", s:"vsco", b:"#000", c:"white", d:"vsco.co"},
+    {n:"Trello", s:"trello", b:"#0052CC", c:"white", d:"trello.com"},
+    {n:"Asana", s:"asana", b:"#F06A6A", c:"white", d:"asana.com"},
+    {n:"Notion", s:"notion", b:"#fff", c:"", d:"notion.so"},
+    {n:"Evernote", s:"evernote", b:"#00A82D", c:"white", d:"evernote.com"},
+    {n:"Dropbox", s:"dropbox", b:"#0061FF", c:"white", d:"dropbox.com"},
+    {n:"Box", s:"box", b:"#0061D5", c:"white", d:"box.com"},
+    {n:"OneDrive", s:"microsoftonedrive", b:"#0078D4", c:"white", d:"onedrive.live.com"},
+    {n:"Teams", s:"microsoftteams", b:"#6264A7", c:"white", d:"teams.microsoft.com"},
+    {n:"Outlook", s:"microsoftoutlook", b:"#fff", c:"", d:"outlook.live.com"},
+    {n:"Word", s:"microsoftword", b:"#2B579A", c:"white", d:"microsoft.com"},
+    {n:"Excel", s:"microsoftexcel", b:"#217346", c:"white", d:"microsoft.com"},
+    {n:"PowerPoint", s:"microsoftpowerpoint", b:"#B7472A", c:"white", d:"microsoft.com"},
+    {n:"ChatGPT", s:"openai", b:"#10A37F", c:"white", d:"chat.openai.com"},
+    {n:"CapCut", s:"capcut", b:"#000", c:"white", d:"capcut.com"},
+    {n:"GitHub", s:"github", b:"#181717", c:"white", d:"github.com"},
+    {n:"Figma", s:"figma", b:"#F24E1E", c:"white", d:"figma.com"},
+    {n:"Strava", s:"strava", b:"#FC4C02", c:"white", d:"strava.com"},
+    {n:"BeReal", s:"bereal", b:"#000", c:"white", d:"bereal.com"}
   ];
 
-  // Core apps correctly scaled using real Android vector paths
+  // Core dock apps correctly scaled using real Android vector paths
   var coreApps = [
     {n:"Phone", svg:'<svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="#fff"/></svg>', b:"#34d399"},
     {n:"Messages", svg:'<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" fill="#fff"/></svg>', b:"#1b6ef3"},
@@ -2134,7 +2211,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function getAppHTML(app, isNotes, isLock){
     if(isNotes) {
         var iconSrc = magic.hsNotesIcon || 'assets/icon.png';
-        return '<div class="hs-app-wrapper is-notes"><div class="hs-app-icon" style="background:#111; padding:0;"><img src="'+iconSrc+'" onerror="this.src=\'icons/icon-192.png\'"></div><div class="hs-app-label">Notes</div></div>';
+        return '<div class="hs-app-wrapper is-notes"><div class="hs-app-icon" style="background:#111; padding:0;"><img src="'+iconSrc+'" onerror="this.src=\'icons/icon-192.png\'" style="width:100%; height:100%; object-fit:cover;"></div><div class="hs-app-label">Notes</div></div>';
     }
     if(isLock) {
         var lockSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>';
@@ -2143,8 +2220,15 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     if(app.svg){
         return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+app.b+';">'+app.svg+'</div><div class="hs-app-label">'+app.n+'</div></div>';
     }
+    
+    // Primary URL
     var cdnUrl = 'https://cdn.simpleicons.org/' + app.s + (app.c ? ('/'+app.c) : '');
-    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+app.b+';"><img src="'+cdnUrl+'" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div><div class="hs-app-label">'+app.n+'</div></div>';
+    // Bulletproof Fallback URL (Google Favicon Server)
+    var fallbackUrl = 'https://www.google.com/s2/favicons?domain=' + app.d + '&sz=128';
+    // If the SVG fails to load (Adblock/CORS/Down), it instantly injects the real favicon perfectly scaled.
+    var onErrorScript = "this.onerror=null; this.src='" + fallbackUrl + "'; this.parentElement.style.padding='0'; this.style.objectFit='cover'; this.style.borderRadius='14px';";
+
+    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+app.b+';"><img src="'+cdnUrl+'" style="width:100%; height:100%; object-fit:contain;" onerror="'+onErrorScript+'"></div><div class="hs-app-label">'+app.n+'</div></div>';
   }
 
   function updateClocksForHs(){
@@ -2268,8 +2352,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     setTimeout(function(){ hsToast.classList.remove('show'); }, 2000);
   }
 
-  // Ensures events are only bound once to prevent skipping bugs
+  // Event listener gate prevents multiple bindings
   var hsEventsBound = false;
+  var hsDockLastTap = 0;
   
   function bindHsEvents(){
     if(hsEventsBound) return;
@@ -2278,7 +2363,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     var startX = 0, startY = 0, isDragging = false, touchZoneVal = 0;
     
     hsPagesWrapper.addEventListener('touchstart', function(e){
-      if(hsIsAnimating) return; // Note: removed page limit block to allow swipe-backs
+      if(hsIsAnimating) return; 
       var t = e.touches[0];
       startX = t.clientX; startY = t.clientY;
       isDragging = true;
@@ -2342,19 +2427,29 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       }
     });
 
+    // Delegated listener for the dock handles the Lock shortcut securely
+    hsDock.addEventListener('touchend', function(e){
+      var lockBtn = e.target.closest('.is-lock');
+      if(lockBtn){
+        var now = Date.now();
+        if(now - hsDockLastTap < 320){
+          hsDockLastTap = 0;
+          e.stopPropagation();
+          e.preventDefault();
+          
+          if(editor.classList.contains('open')) closeEditor();
+          closePopovers();
+          exitHsFlow();
+          applyFilter('all');
+        } else {
+          hsDockLastTap = now;
+        }
+      }
+    });
+
     hsDock.addEventListener('click', function(e){
        if(e.target.closest('.dummy-app')) showHsToast();
     });
-
-    // Double tap the Lock icon on the dock to immediately access the Notes app safely
-    var lockIcon = hsDock.querySelector('.is-lock');
-    if(lockIcon){
-       attachDoubleTap(lockIcon, function(e){
-          e.stopPropagation();
-          exitHsFlow();
-          applyFilter('all');
-       });
-    }
   }
 
   function executeHsPin(){
