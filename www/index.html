@@ -475,7 +475,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   z-index:1; filter:brightness(0.85);
 }
 .hs-top-bar{
-  position:absolute; top:calc(env(safe-area-inset-top,0px) + 2px); left:16px; right:16px;
+  position:absolute; top:env(safe-area-inset-top, 0px); left:16px; right:16px; padding-top:6px;
   display:flex; justify-content:space-between; align-items:center; z-index:5;
   color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
 }
@@ -525,7 +525,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   overflow:hidden; position:relative;
 }
 .hs-app-icon svg{width:100%; height:100%; display:block;}
-.hs-app-icon img{width:100%; height:100%; object-fit:cover;}
+.hs-app-icon img{width:100%; height:100%; object-fit:contain;}
 .hs-app-label{
   color:#fff; font-size:11px; text-shadow:0 1px 3px rgba(0,0,0,0.8);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
@@ -728,7 +728,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       
       <div class="outs-label" style="margin-top:14px;">Notes App Icon (Golden Pen)</div>
       <div class="lockbg-row">
-        <div class="lockbg-thumb" id="hsIconThumb"></div>
+        <div class="lockbg-thumb" id="hsIconThumb" style="background:#111; padding:4px;"></div>
         <div class="lockbg-actions">
           <div class="btn-pill glass" id="hsIconChangeBtn">Change icon</div>
           <div class="btn-pill glass" id="hsIconRemoveBtn">Reset</div>
@@ -1948,7 +1948,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function resolvePin(pin){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     
-    // Dynamically calculate the active code length requirement (2 or 3 digits)
     var codeLen = 2;
     if(fx && fx.type === 'list'){
       codeLen = listCodeDigits(fx.items);
@@ -1958,7 +1957,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       });
     }
 
-    // Always slice the actual pin to the required number of final digits
+    // Invisibly slice the pin to the required number of final digits
     var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
     
     if(fx && fx.type === 'list'){
@@ -1989,7 +1988,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       sortLabel.textContent = 'Recent';
     }
     
-    // Clean up and exit whichever flow was active
     exitClassicLockFlow();
     exitHsFlow();
     applyFilter('all');
@@ -2082,10 +2080,10 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     pinKeypad.appendChild(btn);
   });
 
-  // Goal 1: Force UI to always be 4 digits, but correctly resolve last 2-3
+  // RESTORED: Hardlocked to strictly 4 visual dots.
   function renderPinDots(){
     pinDots.innerHTML = '';
-    var total = 4; // ALWAYS 4 dots for Classic Lock UI
+    var total = 4;
     for(var i=0;i<total;i++){
       var dot = document.createElement('div');
       dot.className = 'pin-dot' + (i < pinDigits.length ? ' filled' : '');
@@ -2095,7 +2093,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function handleClassicPinKey(k){
     if(k === 'empty') return;
     if(k === 'delete'){ pinDigits = pinDigits.slice(0,-1); renderPinDots(); return; }
-    if(pinDigits.length >= 4) return; // Cap at 4
+    if(pinDigits.length >= 4) return;
     pinDigits += k;
     renderPinDots();
     if(pinDigits.length === 4){
@@ -2118,29 +2116,33 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var hsTotalPages = 3;
   var hsIsAnimating = false;
   
-  // Goal 2: Absolute REAL Android App Icons loaded cleanly via Google's Favicon API
+  // 75 hyper-accurate SVGs directly from simple-icons CDN mapped to correct brand background colors
   var realApps = [
-    {n:"Chrome", d:"google.com"}, {n:"WhatsApp", d:"whatsapp.com"},
-    {n:"Instagram", d:"instagram.com"}, {n:"YouTube", d:"youtube.com"},
-    {n:"Netflix", d:"netflix.com"}, {n:"Spotify", d:"spotify.com"},
-    {n:"Facebook", d:"facebook.com"}, {n:"X", d:"x.com"},
-    {n:"TikTok", d:"tiktok.com"}, {n:"Amazon", d:"amazon.com"},
-    {n:"Snapchat", d:"snapchat.com"}, {n:"Uber", d:"uber.com"},
-    {n:"Airbnb", d:"airbnb.com"}, {n:"Pinterest", d:"pinterest.com"},
-    {n:"Slack", d:"slack.com"}, {n:"Zoom", d:"zoom.us"},
-    {n:"Drive", d:"drive.google.com"}, {n:"Maps", d:"maps.google.com"},
-    {n:"Weather", d:"weather.com"}, {n:"Calendar", d:"calendar.google.com"},
-    {n:"Photos", d:"photos.google.com"}, {n:"Settings", d:"android.com"},
-    {n:"Gmail", d:"mail.google.com"}, {n:"Play Store", d:"play.google.com"}
+    {n:"Chrome", s:"googlechrome", b:"#fff", c:""}, {n:"WhatsApp", s:"whatsapp", b:"#25D366", c:"white"}, {n:"Instagram", s:"instagram", b:"#E1306C", c:"white"}, {n:"YouTube", s:"youtube", b:"#FF0000", c:"white"}, {n:"Netflix", s:"netflix", b:"#000", c:"#E50914"}, {n:"Spotify", s:"spotify", b:"#1DB954", c:"white"}, {n:"TikTok", s:"tiktok", b:"#000", c:"white"}, {n:"Facebook", s:"facebook", b:"#1877F2", c:"white"}, {n:"X", s:"x", b:"#000", c:"white"}, {n:"Snapchat", s:"snapchat", b:"#FFFC00", c:"#000"}, {n:"Maps", s:"googlemaps", b:"#fff", c:""}, {n:"Gmail", s:"gmail", b:"#fff", c:""}, {n:"Photos", s:"googlephotos", b:"#fff", c:""}, {n:"Drive", s:"googledrive", b:"#fff", c:""}, {n:"Calendar", s:"googlecalendar", b:"#fff", c:""}, {n:"Play Store", s:"googleplay", b:"#fff", c:""}, {n:"Slack", s:"slack", b:"#fff", c:""}, {n:"Zoom", s:"zoom", b:"#2D8CFF", c:"white"}, {n:"Uber", s:"uber", b:"#000", c:"white"}, {n:"Airbnb", s:"airbnb", b:"#FF5A5F", c:"white"}, {n:"Pinterest", s:"pinterest", b:"#E60023", c:"white"}, {n:"Discord", s:"discord", b:"#5865F2", c:"white"}, {n:"Telegram", s:"telegram", b:"#26A5E4", c:"white"}, {n:"Reddit", s:"reddit", b:"#FF4500", c:"white"}, {n:"LinkedIn", s:"linkedin", b:"#0A66C2", c:"white"}, {n:"Twitch", s:"twitch", b:"#9146FF", c:"white"}, {n:"Amazon", s:"amazon", b:"#fff", c:"#FF9900"}, {n:"eBay", s:"ebay", b:"#fff", c:""}, {n:"PayPal", s:"paypal", b:"#00457C", c:"white"}, {n:"Cash App", s:"cashapp", b:"#00D632", c:"white"}, {n:"Venmo", s:"venmo", b:"#008CFF", c:"white"}, {n:"Tinder", s:"tinder", b:"#FF6B6B", c:"white"}, {n:"Bumble", s:"bumble", b:"#FFC629", c:"white"}, {n:"DoorDash", s:"doordash", b:"#FF3008", c:"white"}, {n:"Lyft", s:"lyft", b:"#FF00BF", c:"white"}, {n:"Waze", s:"waze", b:"#33CCFF", c:"white"}, {n:"Duolingo", s:"duolingo", b:"#58CC02", c:"white"}, {n:"Shazam", s:"shazam", b:"#0088FF", c:"white"}, {n:"SoundCloud", s:"soundcloud", b:"#FF5500", c:"white"}, {n:"Tidal", s:"tidal", b:"#000", c:"white"}, {n:"Viber", s:"viber", b:"#665CAC", c:"white"}, {n:"Line", s:"line", b:"#00C300", c:"white"}, {n:"WeChat", s:"wechat", b:"#07C160", c:"white"}, {n:"Skype", s:"skype", b:"#00AFF0", c:"white"}, {n:"Signal", s:"signal", b:"#3A76F0", c:"white"}, {n:"Messenger", s:"messenger", b:"#00B2FF", c:"white"}, {n:"Roblox", s:"roblox", b:"#fff", c:""}, {n:"Minecraft", s:"minecraft", b:"#111", c:"white"}, {n:"Steam", s:"steam", b:"#171A21", c:"white"}, {n:"Xbox", s:"xbox", b:"#107C10", c:"white"}, {n:"PlayStation", s:"playstation", b:"#003791", c:"white"}, {n:"Nintendo", s:"nintendo", b:"#E60012", c:"white"}, {n:"Canva", s:"canva", b:"#00C4CC", c:"white"}, {n:"Picsart", s:"picsart", b:"#fff", c:""}, {n:"Lightroom", s:"adobelightroom", b:"#31A8FF", c:"white"}, {n:"VSCO", s:"vsco", b:"#000", c:"white"}, {n:"Trello", s:"trello", b:"#0052CC", c:"white"}, {n:"Asana", s:"asana", b:"#F06A6A", c:"white"}, {n:"Notion", s:"notion", b:"#fff", c:""}, {n:"Evernote", s:"evernote", b:"#00A82D", c:"white"}, {n:"Dropbox", s:"dropbox", b:"#0061FF", c:"white"}, {n:"Box", s:"box", b:"#0061D5", c:"white"}, {n:"OneDrive", s:"microsoftonedrive", b:"#0078D4", c:"white"}, {n:"Teams", s:"microsoftteams", b:"#6264A7", c:"white"}, {n:"Outlook", s:"microsoftoutlook", b:"#fff", c:""}, {n:"Word", s:"microsoftword", b:"#2B579A", c:"white"}, {n:"Excel", s:"microsoftexcel", b:"#217346", c:"white"}, {n:"PowerPoint", s:"microsoftpowerpoint", b:"#B7472A", c:"white"}, {n:"ChatGPT", s:"openai", b:"#10A37F", c:"white"}, {n:"CapCut", s:"capcut", b:"#000", c:"white"}, {n:"GitHub", s:"github", b:"#181717", c:"white"}, {n:"Figma", s:"figma", b:"#F24E1E", c:"white"}, {n:"Strava", s:"strava", b:"#FC4C02", c:"white"}, {n:"BeReal", s:"bereal", b:"#000", c:"white"}
   ];
 
-  function getAppHTML(app, isNotes){
+  // Core apps embedded locally as pure SVGs
+  var coreApps = [
+    {n:"Phone", svg:'<svg viewBox="0 0 24 24"><path d="M6.6 8.3c.6-1.5 2-2.3 3.5-1.9.5.1 1 .5 1.2 1 .4.8.9 2 1.2 2.9.2.7-.1 1.5-.7 1.9l-1 .7c.6 1.4 1.7 2.5 3.1 3.1l.7-1c.4-.6 1.2-.9 1.9-.7.9.3 2.1.8 2.9 1.2.5.2.9.7 1 1.2.4 1.5-.4 2.9-1.9 3.5-2.8 1-6.7-.4-9.8-3.5C5.8 13.6 4.4 9.7 5.4 6.9z" fill="#fff"/></svg>', b:"#34d399"},
+    {n:"Messages", svg:'<svg viewBox="0 0 24 24"><path d="M6 16.5c0 1.5 1.5 2.5 3 2.5h8c1.5 0 2.5-1 2.5-2.5v-7C19.5 8 18.5 7 17 7H7C5.5 7 4.5 8 4.5 9.5v5l-1.5 3c-.2.5.2 1 .7 1h2v-2z" fill="#fff"/></svg>', b:"#1b6ef3"},
+    {n:"Camera", svg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="#fff"/><circle cx="17.5" cy="7.5" r="1" fill="#fff"/><path d="M19 6h-2.2l-1.4-1.8A1 1 0 0014.6 4h-5.2a1 1 0 00-.8.4L7.2 6H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7 12c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6z" fill="#fff"/></svg>', b:"#4b5563"},
+    {n:"Settings", svg:'<svg viewBox="0 0 24 24"><path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2.1-1.6c.2-.2.3-.4.2-.6l-2-3.5c-.1-.2-.3-.3-.6-.2l-2.5 1c-.5-.4-1.1-.7-1.7-1l-.4-2.7c0-.2-.2-.4-.5-.4h-4c-.3 0-.5.2-.5.4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1c-.2-.1-.5 0-.6.2l-2 3.5c-.1.2 0 .5.2.6l2.1 1.6c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2.1 1.6c-.2.2-.3.4-.2.6l2 3.5c.1.2.3.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5c.1-.2 0-.5-.2-.6l-2.1-1.6zM12 15.5A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z" fill="#fff"/></svg>', b:"#4b5563"}
+  ];
+
+  function getAppHTML(app, isNotes, isLock){
     if(isNotes) {
         var iconSrc = magic.hsNotesIcon || 'assets/icon.png';
         return '<div class="hs-app-wrapper is-notes"><div class="hs-app-icon" style="background:#111; padding:0;"><img src="'+iconSrc+'" onerror="this.src=\'icons/icon-192.png\'"></div><div class="hs-app-label">Notes</div></div>';
     }
-    var iconSrc = 'https://www.google.com/s2/favicons?domain='+app.d+'&sz=128';
-    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:0; background:#fff;"><img src="'+iconSrc+'" style="border-radius:22%; width:100%; height:100%;" onerror="this.style.display=\'none\'"></div><div class="hs-app-label">'+app.n+'</div></div>';
+    if(isLock) {
+        var lockSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>';
+        return '<div class="hs-app-wrapper is-lock"><div class="hs-app-icon" style="background:#1e293b; padding:12px;">'+lockSvg+'</div><div class="hs-app-label">Lock</div></div>';
+    }
+    if(app.svg){
+        return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+app.b+';">'+app.svg+'</div><div class="hs-app-label">'+app.n+'</div></div>';
+    }
+    var cdnUrl = 'https://cdn.simpleicons.org/' + app.s + (app.c ? ('/'+app.c) : '');
+    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+app.b+';"><img src="'+cdnUrl+'" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div><div class="hs-app-label">'+app.n+'</div></div>';
   }
 
   function updateClocksForHs(){
@@ -2158,6 +2160,13 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     return padded;
   }
 
+  // Pre-shuffle the pool ONCE so the apps stay static every time you open it
+  var staticAppPool = null;
+  function getStaticAppPool() {
+    if(!staticAppPool) { staticAppPool = [...realApps].sort(() => 0.5 - Math.random()); }
+    return staticAppPool;
+  }
+
   function renderHomeScreen(){
     hsPinDigits = '';
     hsCurrentPage = 0;
@@ -2165,8 +2174,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     
     updateClocksForHs();
 
-    var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     var requiredLen = 2; // Default required swipe length
+    var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     if(activeFx && activeFx.type === 'list'){
       requiredLen = listCodeDigits(activeFx.items);
     } else if (activeFx) {
@@ -2182,8 +2191,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     hsPagesWrapper.style.transform = 'translateX(0)';
     hsPagesWrapper.style.transition = 'none';
 
-    // Shuffle apps to prevent repetition across pages
-    var appPool = [...realApps].sort(() => 0.5 - Math.random());
+    var appPool = getStaticAppPool();
     var appIdx = 0;
 
     for(var p=0; p<hsTotalPages; p++){
@@ -2197,7 +2205,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
           <span class="hs-search-text">Search...</span>
         </div>`;
         for(var i=0; i<16; i++){
-          gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+3}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false) + `</div>`;
+          gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+3}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false, false) + `</div>`;
           appIdx++;
         }
       } 
@@ -2213,7 +2221,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
           <div class="hs-clock-item"><div class="hs-clock-face"><div class="hs-clock-hand-h" style="transform:rotate(${hrDeg+150}deg);"></div><div class="hs-clock-hand-m" style="transform:rotate(${minDeg}deg);"></div></div><span class="hs-clock-city">Kuching</span></div>
         </div>`;
         for(var i=0; i<20; i++){
-          gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+2}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false) + `</div>`;
+          gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+2}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false, false) + `</div>`;
           appIdx++;
         }
       }
@@ -2221,9 +2229,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
         // Final Page: 3 lines of Apps, Notes app in middle of 3rd line
         for(var i=0; i<12; i++){
           if(i === 9){ // Row 3, Col 2 (Middle)
-            gridEl.innerHTML += `<div style="grid-row: 3; grid-column: 2;">` + getAppHTML(null, true) + `</div>`;
+            gridEl.innerHTML += `<div style="grid-row: 3; grid-column: 2;">` + getAppHTML(null, true, false) + `</div>`;
           } else {
-            gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+1}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false) + `</div>`;
+            gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+1}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false, false) + `</div>`;
             appIdx++;
           }
         }
@@ -2231,7 +2239,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       else {
         // Optional middle pages: 4x6 Apps
         for(var i=0; i<24; i++){
-          gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+1}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false) + `</div>`;
+          gridEl.innerHTML += `<div style="grid-row: ${Math.floor(i/4)+1}; grid-column: ${(i%4)+1};">` + getAppHTML(appPool[appIdx % appPool.length], false, false) + `</div>`;
           appIdx++;
         }
       }
@@ -2240,11 +2248,14 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       hsPagesWrapper.appendChild(pageEl);
     }
     
-    // Fill dock with unique icons
+    // Fixed Core Dock with Lock Icon
     hsDock.innerHTML = '';
     for(var dIdx=0; dIdx<4; dIdx++){
-      hsDock.innerHTML += getAppHTML(appPool[appIdx % appPool.length], false);
-      appIdx++;
+      if(dIdx === 2) {
+         hsDock.innerHTML += getAppHTML(null, false, true); // Lock Icon
+      } else {
+         hsDock.innerHTML += getAppHTML(coreApps[dIdx === 0 ? 0 : (dIdx === 1 ? 1 : 2)], false, false);
+      }
     }
     
     bindHsEvents();
@@ -2255,7 +2266,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     setTimeout(function(){ hsToast.classList.remove('show'); }, 2000);
   }
 
-  // Goal 4: The Skip Bug is solved with this lock boolean.
+  // Ensures events are only bound once to prevent skipping
   var hsEventsBound = false;
   
   function bindHsEvents(){
@@ -2265,7 +2276,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     var startX = 0, startY = 0, isDragging = false, touchZoneVal = 0;
     
     hsPagesWrapper.addEventListener('touchstart', function(e){
-      if(hsIsAnimating || hsCurrentPage >= hsTotalPages - 1) return;
+      if(hsIsAnimating) return; // Note: removed page limit block to allow swipe-backs
       var t = e.touches[0];
       startX = t.clientX; startY = t.clientY;
       isDragging = true;
@@ -2292,38 +2303,36 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       var deltaX = e.changedTouches[0].clientX - startX;
       
       if(deltaX < -40 && hsCurrentPage < hsTotalPages - 1){
-        // Valid Swipe Left
+        // Valid Swipe Left (Enter digit)
         hsPinDigits += touchZoneVal;
         hsCurrentPage++;
         hsIsAnimating = true;
         hsPagesWrapper.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
         hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * 100) + 'vw)';
         
-        // Goal 6: Clock Peeking on Final Page
+        // Peek verification on the final notes page
         if(hsCurrentPage === hsTotalPages - 1){
            document.getElementById('hsTopTime').textContent = formatPeekTime(hsPinDigits);
         }
 
         setTimeout(function(){ hsIsAnimating = false; }, 360);
       } 
-      // Goal 5: Swipe Back to Reset
       else if (deltaX > 40 && hsCurrentPage > 0) {
+        // Valid Swipe Right (Reset to beginning)
         hsCurrentPage = 0;
         hsPinDigits = '';
         hsIsAnimating = true;
         hsPagesWrapper.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
         hsPagesWrapper.style.transform = 'translateX(0)';
-        updateClocksForHs(); // Turn peek clock back into real clock
+        updateClocksForHs(); // Turn peek clock back into the real time
         setTimeout(function(){ hsIsAnimating = false; }, 360);
       } 
-      // Click Handlers
       else if (Math.abs(deltaX) < 10) {
         if(e.target.closest('.dummy-app')) showHsToast();
         else if(e.target.closest('.is-notes')) executeHsPin();
       }
     }, {passive:true});
     
-    // Notes Icon fallback click
     hsPagesWrapper.addEventListener('click', function(e){
       if(e.target.closest('.is-notes')){
         e.stopPropagation();
@@ -2334,10 +2343,19 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     hsDock.addEventListener('click', function(e){
        if(e.target.closest('.dummy-app')) showHsToast();
     });
+
+    // Double tap the Lock icon on the dock to immediately access the Notes app safely
+    var lockIcon = hsDock.querySelector('.is-lock');
+    if(lockIcon){
+       attachDoubleTap(lockIcon, function(e){
+          e.stopPropagation();
+          exitHsFlow();
+          applyFilter('all');
+       });
+    }
   }
 
   function executeHsPin(){
-    // In case they click early somehow, pad the required digits with 0
     var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
     var len = 2;
     if(activeFx && activeFx.type === 'list'){ len = listCodeDigits(activeFx.items); } 
@@ -2354,7 +2372,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function exitHsFlow(){
     homeScreenFlow.classList.remove('open');
   }
-
 
   /* ---------------- MASTER LOCK TRIGGER ---------------- */
   attachDoubleTap(document.getElementById('pageTitle'), function(){
