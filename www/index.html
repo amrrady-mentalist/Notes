@@ -336,8 +336,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 .lockbg-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
 .lockbg-actions{display:flex; gap:8px; flex-wrap:wrap;}
 .lockbg-actions .btn-pill:active{background:var(--glass-fill-strong);}
-#lockBgRemoveBtn{color:var(--danger); display:none;}
-#lockBgRemoveBtn.show{display:inline-block;}
+#lockBgRemoveBtn, #hsBgRemoveBtn, #hsIconRemoveBtn {color:var(--danger); display:none;}
+#lockBgRemoveBtn.show, #hsBgRemoveBtn.show, #hsIconRemoveBtn.show {display:inline-block;}
 
 #effectEditor{z-index:85;}
 .effect-name-input{
@@ -475,7 +475,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   z-index:1; filter:brightness(0.85);
 }
 .hs-top-bar{
-  position:absolute; top:calc(env(safe-area-inset-top,0px) + 8px); left:16px; right:16px;
+  position:absolute; top:calc(env(safe-area-inset-top,0px) + 2px); left:16px; right:16px;
   display:flex; justify-content:space-between; align-items:center; z-index:5;
   color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
 }
@@ -721,11 +721,22 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
         <div class="lockbg-thumb" id="hsBgThumb"></div>
         <div class="lockbg-actions">
           <div class="btn-pill glass" id="hsBgChangeBtn">Change photo</div>
-          <div class="btn-pill glass" id="hsBgRemoveBtn">Remove</div>
+          <div class="btn-pill glass" id="hsBgRemoveBtn">Reset</div>
         </div>
       </div>
       <input type="file" id="hsBgFileInput" accept="image/*" style="display:none;">
-      <p class="effect-body-hint" style="margin-top:10px;">The 3x3 app grid above the dock acts as a 1-9 dial pad. Swipe starting from any of those 9 icons to log a number. Swipe from anywhere else to log a 0.</p>
+      
+      <div class="outs-label" style="margin-top:14px;">Notes App Icon (Golden Pen)</div>
+      <div class="lockbg-row">
+        <div class="lockbg-thumb" id="hsIconThumb"></div>
+        <div class="lockbg-actions">
+          <div class="btn-pill glass" id="hsIconChangeBtn">Change icon</div>
+          <div class="btn-pill glass" id="hsIconRemoveBtn">Reset</div>
+        </div>
+      </div>
+      <input type="file" id="hsIconFileInput" accept="image/*" style="display:none;">
+
+      <p class="effect-body-hint" style="margin-top:14px;">The 3x3 app grid above the dock acts as a 1-9 dial pad. Swipe left starting from any of those 9 icons to log a number. Swipe left from anywhere else to log a 0. Swipe right to reset the code.</p>
     </div>
   </div>
   
@@ -1521,6 +1532,12 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var hsBgRemoveBtn = document.getElementById('hsBgRemoveBtn');
   var hsBgFileInput = document.getElementById('hsBgFileInput');
 
+  // Notes App Icon File Uploader
+  var hsIconThumb = document.getElementById('hsIconThumb');
+  var hsIconChangeBtn = document.getElementById('hsIconChangeBtn');
+  var hsIconRemoveBtn = document.getElementById('hsIconRemoveBtn');
+  var hsIconFileInput = document.getElementById('hsIconFileInput');
+
   var photoPlaceholderSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-4 4-3-3-5 5"/></svg>';
   
   function renderLockBgUI(){
@@ -1529,6 +1546,10 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     
     hsBgThumb.innerHTML = magic.hsBackground ? '<img src="'+magic.hsBackground+'">' : photoPlaceholderSvg;
     hsBgRemoveBtn.classList.toggle('show', !!magic.hsBackground);
+    
+    var noteIconPath = magic.hsNotesIcon || 'assets/icon.png';
+    hsIconThumb.innerHTML = '<img src="'+noteIconPath+'" onerror="this.src=\'icons/icon-192.png\'">';
+    hsIconRemoveBtn.classList.toggle('show', !!magic.hsNotesIcon);
   }
   
   function applyLockBackground(){
@@ -1593,6 +1614,20 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   });
   hsBgRemoveBtn.addEventListener('click', function(){
     magic.hsBackground = null; saveMagic(); renderLockBgUI();
+  });
+
+  // HS Notes Icon Listeners
+  hsIconChangeBtn.addEventListener('click', function(){ hsIconFileInput.click(); });
+  hsIconFileInput.addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    resizeImageFile(file, 512, function(dataUrl){
+      magic.hsNotesIcon = dataUrl; saveMagic(); renderLockBgUI();
+    });
+    hsIconFileInput.value = '';
+  });
+  hsIconRemoveBtn.addEventListener('click', function(){
+    magic.hsNotesIcon = null; saveMagic(); renderLockBgUI();
   });
 
   // Lock Mode Toggle
@@ -1842,18 +1877,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   });
 
   /* ---------------- magic lock logic (shared) ---------------- */
-  function requiredPinLength(){
-    var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
-    var len = 4; // Default PIN length
-    if(fx && fx.type === 'list'){
-      len = listCodeDigits(fx.items);
-    } else if (fx) {
-      fx.outs.forEach(function(o){
-        if(o.code && String(o.code).length > len) len = String(o.code).length;
-      });
-    }
-    return len;
-  }
   function listActualItems(items){
     var arr = (items || []).filter(function(l){ return l && l.trim() !== ''; });
     if(arr.length > 1000) arr = arr.slice(0, 1000);
@@ -1921,11 +1944,24 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       return '<p>' + (escaped || '<br>') + '</p>';
     }).join('');
   }
+  
   function resolvePin(pin){
     var fx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    
+    // Dynamically calculate the active code length requirement (2 or 3 digits)
+    var codeLen = 2;
     if(fx && fx.type === 'list'){
-      var codeLen = listCodeDigits(fx.items);
-      var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
+      codeLen = listCodeDigits(fx.items);
+    } else if (fx) {
+      fx.outs.forEach(function(o){
+        if(o.code && String(o.code).length > codeLen) codeLen = String(o.code).length;
+      });
+    }
+
+    // Always slice the actual pin to the required number of final digits
+    var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
+    
+    if(fx && fx.type === 'list'){
       var html = buildListForceHtml(fx.items, fx.forceWord, lastDigits);
       var listNote = findLinkedListNote(fx.id);
       if(listNote){
@@ -1942,11 +1978,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       state.sort = 'recent';
       sortLabel.textContent = 'Recent';
     } else if(fx){
-      var codeLen = 2;
-      fx.outs.forEach(function(o){
-        if(o.code && String(o.code).length > codeLen) codeLen = String(o.code).length;
-      });
-      var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
       var target = parseInt(lastDigits, 10);
       var match = fx.outs.find(function(o){ return o.code !== '' && parseInt(o.code,10) === target; });
       var word = match ? match.word : '\ud83e\uddd0';
@@ -2051,9 +2082,10 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     pinKeypad.appendChild(btn);
   });
 
+  // Goal 1: Force UI to always be 4 digits, but correctly resolve last 2-3
   function renderPinDots(){
     pinDots.innerHTML = '';
-    var total = requiredPinLength();
+    var total = 4; // ALWAYS 4 dots for Classic Lock UI
     for(var i=0;i<total;i++){
       var dot = document.createElement('div');
       dot.className = 'pin-dot' + (i < pinDigits.length ? ' filled' : '');
@@ -2063,13 +2095,15 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function handleClassicPinKey(k){
     if(k === 'empty') return;
     if(k === 'delete'){ pinDigits = pinDigits.slice(0,-1); renderPinDots(); return; }
-    if(pinDigits.length >= 16) return;
+    if(pinDigits.length >= 4) return; // Cap at 4
     pinDigits += k;
     renderPinDots();
-    if(pinDigits.length >= requiredPinLength()) resolvePin(pinDigits);
+    if(pinDigits.length === 4){
+      setTimeout(function(){ resolvePin(pinDigits); }, 150);
+    }
   }
 
-  /* ---------------- HYPER-REALISTIC HOME SCREEN FLOW ---------------- */
+  /* ---------------- HYPER-REALISTIC FAKE HOME SCREEN FLOW ---------------- */
   var homeScreenFlow = document.getElementById('homeScreenFlow');
   var hsBackground = document.getElementById('hsBackground');
   var hsPagesWrapper = document.getElementById('hsPagesWrapper');
@@ -2084,35 +2118,44 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var hsTotalPages = 3;
   var hsIsAnimating = false;
   
-  // Ultra-realistic embedded SVGs for popular apps
+  // Goal 2: Absolute REAL Android App Icons loaded cleanly via Google's Favicon API
   var realApps = [
-    {n:"Chrome", svg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#fff"/><path d="M12 2a10 10 0 018.66 5H8.34L3.34 15.66A10 10 0 0112 2z" fill="#ea4335"/><path d="M22 12a10 10 0 01-5 8.66l-5-8.66h10z" fill="#fbbc04"/><path d="M12 22a10 10 0 01-8.66-5l5-8.66L12 22z" fill="#34a853"/><circle cx="12" cy="12" r="4.5" fill="#fff"/><circle cx="12" cy="12" r="3.5" fill="#4285f4"/></svg>'},
-    {n:"Messages", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1b6ef3"/><path d="M6 16.5c0 1.5 1.5 2.5 3 2.5h8c1.5 0 2.5-1 2.5-2.5v-7C19.5 8 18.5 7 17 7H7C5.5 7 4.5 8 4.5 9.5v5l-1.5 3c-.2.5.2 1 .7 1h2v-2z" fill="#fff"/></svg>'},
-    {n:"Phone", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#34d399"/><path d="M6.6 8.3c.6-1.5 2-2.3 3.5-1.9.5.1 1 .5 1.2 1 .4.8.9 2 1.2 2.9.2.7-.1 1.5-.7 1.9l-1 .7c.6 1.4 1.7 2.5 3.1 3.1l.7-1c.4-.6 1.2-.9 1.9-.7.9.3 2.1.8 2.9 1.2.5.2.9.7 1 1.2.4 1.5-.4 2.9-1.9 3.5-2.8 1-6.7-.4-9.8-3.5C5.8 13.6 4.4 9.7 5.4 6.9z" fill="#fff"/></svg>'},
-    {n:"YouTube", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fff"/><path d="M20 7.5c-.2-.7-.7-1.2-1.4-1.4C17.3 5.8 12 5.8 12 5.8s-5.3 0-6.6.3c-.7.2-1.2.7-1.4 1.4C3.7 8.8 3.7 12 3.7 12s0 3.2.3 4.5c.2.7.7 1.2 1.4 1.4 1.3.3 6.6.3 6.6.3s5.3 0 6.6-.3c.7-.2 1.2-.7 1.4-1.4.3-1.3.3-4.5.3-4.5s0-3.2-.3-4.5z" fill="#ff0000"/><path d="M10.4 15l5.4-3-5.4-3v6z" fill="#fff"/></svg>'},
-    {n:"Maps", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fff"/><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5s1.1-2.5 2.5-2.5 2.5 1.1 2.5 2.5-1.1 2.5-2.5 2.5z" fill="#34a853"/><path d="M12 4.5c-2.5 0-4.5 2-4.5 4.5 0 1.5.8 3 1.9 3.9l2.6-3.1L12 4.5z" fill="#ea4335"/><path d="M16.5 9c0-1.2-.5-2.3-1.3-3.1L12 9.8 16.5 9z" fill="#fbbc04"/><path d="M12 11.5c1.4 0 2.5-1.1 2.5-2.5h-5c0 1.4 1.1 2.5 2.5 2.5z" fill="#4285f4"/></svg>'},
-    {n:"Gmail", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fff"/><path d="M4 18V6l8 6 8-6v12H4z" fill="#ea4335" opacity="0.1"/><path d="M4 6l8 6 8-6v3l-8 6-8-6V6z" fill="#ea4335"/><path d="M4 18v-9l8 6 8-6v9H4z" fill="#fbbc04"/></svg>'},
-    {n:"Camera", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#333"/><circle cx="12" cy="12" r="5" fill="#fff"/><circle cx="12" cy="12" r="3" fill="#111"/><circle cx="18" cy="6" r="1" fill="#fff"/></svg>'},
-    {n:"Instagram", svg:'<svg viewBox="0 0 24 24"><defs><linearGradient id="ig" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#fd5949"/><stop offset="50%" stop-color="#d6249f"/><stop offset="100%" stop-color="#285AEB"/></linearGradient></defs><rect width="24" height="24" rx="5" fill="url(#ig)"/><rect x="5" y="5" width="14" height="14" rx="4" fill="none" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="#fff" stroke-width="2"/><circle cx="16.5" cy="7.5" r="1" fill="#fff"/></svg>'},
-    {n:"WhatsApp", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#25D366"/><path d="M12 4a8 8 0 00-6.8 12.2l-1.2 3.6 3.7-1.2A8 8 0 1012 4zm4.2 11.5c-.2.6-1.1 1.1-1.6 1.1-.4 0-.9-.1-1.6-.4-2-.8-3.3-2.9-3.4-3-.1-.1-.8-1.1-.8-2.1 0-1 .5-1.5.7-1.8.2-.2.5-.3.8-.3.2 0 .4 0 .6.4.2.6.7 1.6.7 1.8 0 .2-.1.4-.2.6-.1.1-.3.3-.4.4-.1.1-.3.3-.2.5.2.4.6.8 1 1.2.5.4 1 .7 1.3.9.2.1.4.1.6-.1.1-.2.3-.5.5-.7.2-.2.4-.2.6-.1.2.1 1.4.7 1.6.8.2.1.4.2.4.3 0 .3 0 1.2-.2 1.8z" fill="#fff"/></svg>'},
-    {n:"Spotify", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1DB954"/><path d="M16.5 16.5c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.3.1-.7-.1-.8-.4-.1-.3.1-.7.4-.8 4-.9 7.4-.5 10.2 1.1.3.2.4.6.2.9zm1.3-2.9c-.3.4-.8.5-1.2.3-2.9-1.8-7.3-2.4-10.9-1.3-.4.1-.9-.1-1-.6-.1-.5.1-.9.6-1 4.1-1.2 9-1.2 12.3 1.4.4.2.5.8.2 1.2zm.1-3.1C14.5 8.5 8.4 8.3 5 9.3c-.5.2-1.1-.1-1.2-.6-.2-.5.1-1.1.6-1.2 3.8-1.2 10.6-1 14.7 1.5.5.3.6.9.3 1.4-.3.5-.9.6-1.5.3z" fill="#fff"/></svg>'},
-    {n:"TikTok", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#000"/><path d="M16.5 9c-.8 0-1.5-.2-2.1-.6V14a3.4 3.4 0 11-3.4-3.4v2.4a1 1 0 101 1V5h2.4a4.6 4.6 0 004.1 4.6V12a7 7 0 01-2-.3v-2.7z" fill="#fff"/><path d="M14.4 8.4c-.2-.1-.5-.2-.8-.4v1.8c.3.2.6.3.8.4V8.4z" fill="#69C9D0"/><path d="M12 11.6v-2.4a3.4 3.4 0 00-1 6.6v-2.4a1 1 0 011-1.8z" fill="#EE1D52"/></svg>'},
-    {n:"Settings", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#4b5563"/><path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2.1-1.6c.2-.2.3-.4.2-.6l-2-3.5c-.1-.2-.3-.3-.6-.2l-2.5 1c-.5-.4-1.1-.7-1.7-1l-.4-2.7c0-.2-.2-.4-.5-.4h-4c-.3 0-.5.2-.5.4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1c-.2-.1-.5 0-.6.2l-2 3.5c-.1.2 0 .5.2.6l2.1 1.6c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2.1 1.6c-.2.2-.3.4-.2.6l2 3.5c.1.2.3.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5c.1-.2 0-.5-.2-.6l-2.1-1.6zM12 15.5A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z" fill="#fff"/></svg>'},
-    {n:"Netflix", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#000"/><path d="M7 5h2.5l3.5 9 3.5-9H19v14h-2.5V9l-3.5 9h-2L7.5 9v10H5V5z" fill="#E50914"/></svg>'},
-    {n:"Facebook", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1877f2"/><path d="M16 8h-2c-1.1 0-2 .9-2 2v2h4l-1 4h-3v8h-4v-8H5v-4h3v-2.5C8 6.5 10.5 4 13.5 4H17v4z" fill="#fff"/></svg>'},
-    {n:"X", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#000"/><path d="M18.2 4H21l-6 6.8L22 20h-5.5l-4.3-5.6L7.3 20H4.5l6.5-7.4L4 4h5.6l3.9 5.2L18.2 4zm-1 14.5h1.5L8 5.5H6.3l10.9 13z" fill="#fff"/></svg>'},
-    {n:"Calculator", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fb923c"/><path d="M7 11h3v3H7zm5 0h3v3h-3zm5 0h2v3h-2zM7 16h3v2H7zm5 0h7v2h-7zM7 6h10v3H7z" fill="#fff"/></svg>'},
-    {n:"Calendar", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fff"/><path d="M4 8h16v12a4 4 0 01-4 4H8a4 4 0 01-4-4V8z" fill="#e2e8f0"/><path d="M4 8V6a4 4 0 014-4h8a4 4 0 014 4v2H4z" fill="#ef4444"/><text x="12" y="18" font-family="Arial" font-size="9" font-weight="bold" fill="#1e293b" text-anchor="middle">31</text></svg>'},
-    {n:"Play Store", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fff"/><path d="M5.5 4v16L19 12 5.5 4z" fill="#ea4335"/><path d="M5.5 4l7 5.5L19 12 5.5 4z" fill="#fbbc04"/><path d="M5.5 20l7-5.5L19 12 5.5 20z" fill="#34a853"/><path d="M5.5 4v16l7-8-7-8z" fill="#4285f4"/></svg>'},
-    {n:"Photos", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fff"/><path d="M12 12L5.5 5.5C4 7 4 9 4 12h8z" fill="#ea4335"/><path d="M12 12l6.5-6.5C17 4 15 4 12 4v8z" fill="#fbbc04"/><path d="M12 12l6.5 6.5C20 17 20 15 20 12h-8z" fill="#34a853"/><path d="M12 12l-6.5 6.5C7 20 9 20 12 20v-8z" fill="#4285f4"/></svg>'},
-    {n:"Drive", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#fff"/><path d="M8 18h8l-4-7-4 7z" fill="#34a853"/><path d="M16 18L20 11H12l4 7z" fill="#ea4335"/><path d="M8 18L4 11h8l-4 7z" fill="#fbbc04"/></svg>'},
-    {n:"Weather", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#38bdf8"/><circle cx="10" cy="10" r="4" fill="#fef08a"/><path d="M16 16.5a3.5 3.5 0 00-3-5h-.5a4.5 4.5 0 10-8.5 2h12z" fill="#fff"/></svg>'},
-    {n:"Truecaller", svg:'<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#3b82f6"/><path d="M10 8c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V10c0-1.1.9-2 2-2h3zm7 0c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2h-3c-1.1 0-2-.9-2-2V10c0-1.1.9-2 2-2h3z" fill="#fff"/></svg>'}
+    {n:"Chrome", d:"google.com"}, {n:"WhatsApp", d:"whatsapp.com"},
+    {n:"Instagram", d:"instagram.com"}, {n:"YouTube", d:"youtube.com"},
+    {n:"Netflix", d:"netflix.com"}, {n:"Spotify", d:"spotify.com"},
+    {n:"Facebook", d:"facebook.com"}, {n:"X", d:"x.com"},
+    {n:"TikTok", d:"tiktok.com"}, {n:"Amazon", d:"amazon.com"},
+    {n:"Snapchat", d:"snapchat.com"}, {n:"Uber", d:"uber.com"},
+    {n:"Airbnb", d:"airbnb.com"}, {n:"Pinterest", d:"pinterest.com"},
+    {n:"Slack", d:"slack.com"}, {n:"Zoom", d:"zoom.us"},
+    {n:"Drive", d:"drive.google.com"}, {n:"Maps", d:"maps.google.com"},
+    {n:"Weather", d:"weather.com"}, {n:"Calendar", d:"calendar.google.com"},
+    {n:"Photos", d:"photos.google.com"}, {n:"Settings", d:"android.com"},
+    {n:"Gmail", d:"mail.google.com"}, {n:"Play Store", d:"play.google.com"}
   ];
 
   function getAppHTML(app, isNotes){
-    if(isNotes) return '<div class="hs-app-wrapper is-notes"><div class="hs-app-icon" style="background:#111;"><img src="icons/icon-192.png"></div><div class="hs-app-label">Notes</div></div>';
-    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon">'+app.svg+'</div><div class="hs-app-label">'+app.n+'</div></div>';
+    if(isNotes) {
+        var iconSrc = magic.hsNotesIcon || 'assets/icon.png';
+        return '<div class="hs-app-wrapper is-notes"><div class="hs-app-icon" style="background:#111; padding:0;"><img src="'+iconSrc+'" onerror="this.src=\'icons/icon-192.png\'"></div><div class="hs-app-label">Notes</div></div>';
+    }
+    var iconSrc = 'https://www.google.com/s2/favicons?domain='+app.d+'&sz=128';
+    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:0; background:#fff;"><img src="'+iconSrc+'" style="border-radius:22%; width:100%; height:100%;" onerror="this.style.display=\'none\'"></div><div class="hs-app-label">'+app.n+'</div></div>';
+  }
+
+  function updateClocksForHs(){
+    var d = new Date();
+    document.getElementById('hsTopTime').textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function formatPeekTime(digits) {
+    if(!digits) return '00:00';
+    var padded = digits;
+    if(padded.length === 1) padded = '00:0' + padded;
+    else if(padded.length === 2) padded = '00:' + padded;
+    else if(padded.length === 3) padded = '0' + padded.substring(0,1) + ':' + padded.substring(1,3);
+    else if(padded.length >= 4) padded = padded.substring(0,2) + ':' + padded.substring(2,4);
+    return padded;
   }
 
   function renderHomeScreen(){
@@ -2120,11 +2163,19 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     hsCurrentPage = 0;
     hsBackground.style.backgroundImage = magic.hsBackground ? "url('" + magic.hsBackground + "')" : "linear-gradient(180deg, #0f172a, #000000)";
     
-    var d = new Date();
-    document.getElementById('hsTopTime').textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    updateClocksForHs();
 
-    var requiredLen = requiredPinLength();
-    hsTotalPages = requiredLen + 1; // Number of swipes + final page
+    var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    var requiredLen = 2; // Default required swipe length
+    if(activeFx && activeFx.type === 'list'){
+      requiredLen = listCodeDigits(activeFx.items);
+    } else if (activeFx) {
+      activeFx.outs.forEach(function(o){
+        if(o.code && String(o.code).length > requiredLen) requiredLen = String(o.code).length;
+      });
+    }
+
+    hsTotalPages = requiredLen + 1; // Number of swipes + final notes page
     
     hsPagesWrapper.innerHTML = '';
     hsPagesWrapper.style.width = (hsTotalPages * 100) + 'vw';
@@ -2152,6 +2203,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       } 
       else if(p === 1){
         // Page 2: Clock Widget + 4x5 Apps
+        var d = new Date();
         var hr = d.getUTCHours() + 3; var min = d.getMinutes();
         var hrDeg = (hr%12)*30 + (min*0.5); var minDeg = min*6;
         gridEl.innerHTML += `<div class="hs-clock-widget">
@@ -2203,7 +2255,13 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     setTimeout(function(){ hsToast.classList.remove('show'); }, 2000);
   }
 
+  // Goal 4: The Skip Bug is solved with this lock boolean.
+  var hsEventsBound = false;
+  
   function bindHsEvents(){
+    if(hsEventsBound) return;
+    hsEventsBound = true;
+
     var startX = 0, startY = 0, isDragging = false, touchZoneVal = 0;
     
     hsPagesWrapper.addEventListener('touchstart', function(e){
@@ -2212,19 +2270,17 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       startX = t.clientX; startY = t.clientY;
       isDragging = true;
       
-      // Calculate Absolute Grid Coordinates
       var activeGrid = hsPagesWrapper.children[hsCurrentPage].querySelector('.hs-grid');
       var rect = activeGrid.getBoundingClientRect();
       var cellW = rect.width / 4;
       var cellH = rect.height / 6;
       
-      // Calculate which row (0-5) and col (0-3) was touched
       var col = Math.floor((startX - rect.left) / cellW);
       var row = Math.floor((startY - rect.top) / cellH);
       
-      // Dial Pad is the bottom-right 3x3 block (Rows 3,4,5 and Cols 1,2,3 - 0-indexed)
+      // Dial Pad is the bottom-right 3x3 block (Rows 3,4,5 and Cols 1,2,3)
       if(col >= 1 && col <= 3 && row >= 3 && row <= 5 && startY > rect.top && startY < rect.bottom){
-        touchZoneVal = ((row - 3) * 3) + col; // Output: 1 to 9
+        touchZoneVal = ((row - 3) * 3) + col; // 1 to 9
       } else {
         touchZoneVal = 0;
       }
@@ -2236,33 +2292,58 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       var deltaX = e.changedTouches[0].clientX - startX;
       
       if(deltaX < -40 && hsCurrentPage < hsTotalPages - 1){
-        // Valid Swipe
+        // Valid Swipe Left
         hsPinDigits += touchZoneVal;
         hsCurrentPage++;
         hsIsAnimating = true;
         hsPagesWrapper.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
         hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * 100) + 'vw)';
-        setTimeout(function(){ hsIsAnimating = false; }, 360); // Lock until transition finishes
-      } else if (Math.abs(deltaX) < 10) {
+        
+        // Goal 6: Clock Peeking on Final Page
+        if(hsCurrentPage === hsTotalPages - 1){
+           document.getElementById('hsTopTime').textContent = formatPeekTime(hsPinDigits);
+        }
+
+        setTimeout(function(){ hsIsAnimating = false; }, 360);
+      } 
+      // Goal 5: Swipe Back to Reset
+      else if (deltaX > 40 && hsCurrentPage > 0) {
+        hsCurrentPage = 0;
+        hsPinDigits = '';
+        hsIsAnimating = true;
+        hsPagesWrapper.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+        hsPagesWrapper.style.transform = 'translateX(0)';
+        updateClocksForHs(); // Turn peek clock back into real clock
+        setTimeout(function(){ hsIsAnimating = false; }, 360);
+      } 
+      // Click Handlers
+      else if (Math.abs(deltaX) < 10) {
         if(e.target.closest('.dummy-app')) showHsToast();
         else if(e.target.closest('.is-notes')) executeHsPin();
       }
     }, {passive:true});
     
-    var notesIcon = hsPagesWrapper.querySelector('.is-notes');
-    if(notesIcon){
-      notesIcon.addEventListener('click', function(e){
+    // Notes Icon fallback click
+    hsPagesWrapper.addEventListener('click', function(e){
+      if(e.target.closest('.is-notes')){
         e.stopPropagation();
         executeHsPin();
-      });
-    }
-    hsDock.querySelectorAll('.dummy-app').forEach(function(el){
-      el.addEventListener('click', showHsToast);
+      }
+    });
+
+    hsDock.addEventListener('click', function(e){
+       if(e.target.closest('.dummy-app')) showHsToast();
     });
   }
 
   function executeHsPin(){
-    while(hsPinDigits.length < requiredPinLength()){ hsPinDigits += '0'; }
+    // In case they click early somehow, pad the required digits with 0
+    var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
+    var len = 2;
+    if(activeFx && activeFx.type === 'list'){ len = listCodeDigits(activeFx.items); } 
+    else if (activeFx) { activeFx.outs.forEach(function(o){ if(o.code && String(o.code).length > len) len = String(o.code).length; }); }
+    
+    while(hsPinDigits.length < len){ hsPinDigits += '0'; }
     resolvePin(hsPinDigits);
   }
 
