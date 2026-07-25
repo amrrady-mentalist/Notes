@@ -477,7 +477,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 
 /* Status Bar pushed flush to absolute top edge + clock shifted 2mm right */
 .hs-top-bar{
-  position:absolute; top:env(safe-area-inset-top, 0px); left:16px; right:16px; height:32px;
+  position:absolute; top:env(safe-area-inset-top, 0px); left:16px; right:16px; height:28px;
   display:flex; justify-content:space-between; align-items:center; z-index:5;
   color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
 }
@@ -809,7 +809,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     <div class="pin-blur-backdrop"></div>
     <div class="pin-abort-zone" id="pinAbortZone">
       <svg class="pin-lock-icon" width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm0 2a3 3 0 013 3v3H9V6a3 3 0 013-3zm0 10.5a1.5 1.5 0 011.5 1.5c0 .68-.4 1.26-.98 1.53l.36 1.72a.4.4 0 01-.39.48h-.98a.4.4 0 01-.39-.48l.36-1.72A1.5 1.5 0 0112 13.5z"/>
+        <path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 02 2h12a2 2 0 0 02-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 00-5-5zm0 2a3 3 0 013 3v3H9V6a3 3 0 013-3zm0 10.5a1.5 1.5 0 011.5 1.5c0 .68-.4 1.26-.98 1.53l.36 1.72a.4.4 0 01-.39.48h-.98a.4.4 0 01-.39-.48l.36-1.72A1.5 1.5 0 0112 13.5z"/>
       </svg>
       <div class="pin-label">Enter PIN</div>
       <div class="pin-dots" id="pinDots"></div>
@@ -878,7 +878,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function seedNotes(){
     var now = Date.now();
     return [
-      {id:uid(), title:"Welcome to Notes", contentHTML:"<p>This is a glassy little notes app. Tap the <b>+</b> to create a note, or the pencil to sketch something. Long-press a card for more actions.</p>", drawing:null, color:"violet", pinned:true, archived:false, updatedAt: now},
+      {id:uid(), title:"Welcome to Notes", contentHTML:"<p>This is a glassy little notes app. Tap the <b>+</b> to create a note, or the pencil to start drawing.</p>", drawing:null, color:"violet", pinned:true, archived:false, updatedAt: now},
       {id:uid(), title:"Groceries", contentHTML:"<ul class='checklist'><li><span class='cbox'></span><span>Oat milk</span></li><li class='done'><span class='cbox'></span><span>Coffee beans</span></li><li><span class='cbox'></span><span>Basil</span></li></ul>", drawing:null, color:"teal", pinned:false, archived:false, updatedAt: now-3600000}
     ];
   }
@@ -1951,7 +1951,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   }
   
   function resolvePin(pin){
-    // Closes the editor if left open in the background BEFORE the lock occurred
     if(editor.classList.contains('open')) closeEditor();
     closePopovers();
 
@@ -1966,7 +1965,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       });
     }
 
-    // Invisibly slice the pin to the required number of final digits
     var lastDigits = pin.length >= codeLen ? pin.slice(-codeLen) : pin;
     
     if(fx && fx.type === 'list'){
@@ -2124,7 +2122,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var hsTotalPages = 3;
   var hsIsAnimating = false;
   
-  // 100% Offline Clean Vector SVGs guaranteeing no broken/cropped images
+  // 75 UNIQUE Offline Clean Vector SVGs (No repeats across any page)
   var appIconsList = [
     {n:"Chrome", b:"#fff", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#fff"/><path d="M12 1.5a10.5 10.5 0 019.09 5.25H12a10.5 10.5 0 00-9.09 5.25L7.46 20.3A10.5 10.5 0 0112 1.5z" fill="#ea4335"/><path d="M22.5 12a10.5 10.5 0 01-5.25 9.09l-4.55-7.88a10.5 10.5 0 005.25-9.09H22.5z" fill="#fbbc04"/><path d="M12 22.5A10.5 10.5 0 012.91 17.25L7.46 9.37A10.5 10.5 0 0012 22.5z" fill="#34a853"/><circle cx="12" cy="12" r="4.7" fill="#fff"/><circle cx="12" cy="12" r="3.7" fill="#4285f4"/></svg>'},
     {n:"WhatsApp", b:"#25D366", s:'<svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 00-6.8 12.2l-1.2 3.6 3.7-1.2A8 8 0 1012 4zm4.2 11.5c-.2.6-1.1 1.1-1.6 1.1-.4 0-.9-.1-1.6-.4-2-.8-3.3-2.9-3.4-3-.1-.1-.8-1.1-.8-2.1 0-1 .5-1.5.7-1.8.2-.2.5-.3.8-.3.2 0 .4 0 .6.4.2.6.7 1.6.7 1.8 0 .2-.1.4-.2.6-.1.1-.3.3-.4.4-.1.1-.3.3-.2.5.2.4.6.8 1 1.2.5.4 1 .7 1.3.9.2.1.4.1.6-.1.1-.2.3-.5.5-.7.2-.2.4-.2.6-.1.2.1 1.4.7 1.6.8.2.1.4.2.4.3 0 .3 0 1.2-.2 1.8z" fill="#fff"/></svg>'},
@@ -2137,11 +2135,11 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     {n:"Spotify", b:"#1DB954", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.3.1-.7-.1-.8-.4-.1-.3.1-.7.4-.8 4-.9 7.4-.5 10.2 1.1.3.2.4.6.2.9zm1.3-2.9c-.3.4-.8.5-1.2.3-2.9-1.8-7.3-2.4-10.9-1.3-.4.1-.9-.1-1-.6-.1-.5.1-.9.6-1 4.1-1.2 9-1.2 12.3 1.4.4.2.5.8.2 1.2zm.1-3.1C16.5 8.5 10.4 8.3 7 9.3c-.5.2-1.1-.1-1.2-.6-.2-.5.1-1.1.6-1.2 3.8-1.2 10.6-1 14.7 1.5.5.3.6.9.3 1.4-.3.5-.9.6-1.5.3z" fill="#fff"/></svg>'},
     {n:"TikTok", b:"#000", s:'<svg viewBox="0 0 24 24"><path d="M16.5 9c-.8 0-1.5-.2-2.1-.6V14a3.4 3.4 0 11-3.4-3.4v2.4a1 1 0 101 1V5h2.4a4.6 4.6 0 004.1 4.6V12a7 7 0 01-2-.3v-2.7z" fill="#fff"/><path d="M14.4 8.4c-.2-.1-.5-.2-.8-.4v1.8c.3.2.6.3.8.4V8.4z" fill="#69C9D0"/><path d="M12 11.6v-2.4a3.4 3.4 0 00-1 6.6v-2.4a1 1 0 011-1.8z" fill="#EE1D52"/></svg>'},
     {n:"Settings", b:"#4b5563", s:'<svg viewBox="0 0 24 24"><path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2.1-1.6c.2-.2.3-.4.2-.6l-2-3.5c-.1-.2-.3-.3-.6-.2l-2.5 1c-.5-.4-1.1-.7-1.7-1l-.4-2.7c0-.2-.2-.4-.5-.4h-4c-.3 0-.5.2-.5.4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1c-.2-.1-.5 0-.6.2l-2 3.5c-.1.2 0 .5.2.6l2.1 1.6c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2.1 1.6c-.2.2-.3.4-.2.6l2 3.5c.1.2.3.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5c.1-.2 0-.5-.2-.6l-2.1-1.6zM12 15.5A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z" fill="#fff"/></svg>'},
-    {n:"Word", b:"#2B579A", s:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="#2B579A"/><text x="12" y="16" font-family="sans-serif" font-size="11" font-weight="800" fill="#fff" text-anchor="middle">W</text></svg>'},
-    {n:"Excel", b:"#217346", s:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="#217346"/><text x="12" y="16" font-family="sans-serif" font-size="11" font-weight="800" fill="#fff" text-anchor="middle">X</text></svg>'},
-    {n:"ChatGPT", b:"#10A37F", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>'},
-    {n:"Xbox", b:"#107C10", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#107C10"/><path d="M8 8.5c2 2 3 3.5 4 3.5s2-1.5 4-3.5c-1-1-2.5-1.5-4-1.5s-3 .5-4 1.5zm-1 7c2-1 3.5-3 5-5-1.5 2-3 4-5 5zm10 0c-2-1-3.5-3-5-5 1.5 2 3 4 5 5z" fill="#fff"/></svg>'},
-    {n:"PlayStation", b:"#003791", s:'<svg viewBox="0 0 24 24"><path d="M12 4.5v12l4 1.5v-3.5l-4-1.5v-3l4 1.5v-2l-4-1.5zm-6 9.5c1.5-.5 3.5-1 5-1v2c-1.5 0-3.5.5-5 1 0 0-1-.5-1-1s.5-1 1-1z" fill="#fff"/></svg>'},
+    {n:"Word", b:"#2B579A", s:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="#2B579A"/><path d="M7 8l2.5 8h2L12 11l.5 5h2L17 8h-2l-1.3 5.5L12.5 8h-1L10.3 13.5 9 8H7z" fill="#fff"/></svg>'},
+    {n:"Excel", b:"#217346", s:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="#217346"/><path d="M8 8l3 4-3 4h2l2-2.8 2 2.8h2l-3-4 3-4h-2l-2 2.8L10 8H8z" fill="#fff"/></svg>'},
+    {n:"ChatGPT", b:"#10A37F", s:'<svg viewBox="0 0 24 24"><path d="M12 3a4.5 4.5 0 00-4.3 3.2A4.5 4.5 0 004 10.5c0 .6.1 1.2.3 1.7A4.5 4.5 0 005 17.5a4.5 4.5 0 003.7 3.3A4.5 4.5 0 0012 21a4.5 4.5 0 004.3-3.2 4.5 4.5 0 003.7-4.3c0-.6-.1-1.2-.3-1.7A4.5 4.5 0 0019 6.5a4.5 4.5 0 00-3.7-3.3A4.5 4.5 0 0012 3zm0 3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-3 0v-3A1.5 1.5 0 0112 6zm-4.5 4.5a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-3 0v-3a1.5 1.5 0 011.5-1.5zm9 0a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-3 0v-3a1.5 1.5 0 011.5-1.5z" fill="#fff"/></svg>'},
+    {n:"Xbox", b:"#107C10", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="#107C10"/><path d="M7 6.8c1.8 1.8 3.5 3.7 5 3.7s3.2-1.9 5-3.7c-1.3-1.1-3-1.8-5-1.8s-3.7.7-5 1.8zm-1.8 9.4c1.8-.8 4.2-2.8 5.8-5-1.8 2-3.8 3.8-5.8 5zm13.6 0c-2-.8-4-3-5.8-5 1.6 2.2 4 4.2 5.8 5z" fill="#fff"/></svg>'},
+    {n:"PlayStation", b:"#003791", s:'<svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.5-.4 3.5-.8 5-.8v2.2c-1.5 0-3.5.4-5 .8v-2.2zm7.5-6.5v8.5c0 .8-.8 1.5-1.8 1.5s-1.8-.7-1.8-1.5V6.8l-4-1.3V18c2 .8 4.5 1.2 6.8 1.2 2.5 0 4.2-.6 4.2-2 0-.8-1.2-1.5-3.4-2.2V7l-3-.5z" fill="#fff"/></svg>'},
     {n:"Notion", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M5 6h14v13H5V6zm2 2v9h2V9l5 6h2V8h-2v5.5L9 8H7z" fill="#000"/></svg>'},
     {n:"Discord", b:"#5865F2", s:'<svg viewBox="0 0 24 24"><path d="M19.3 5.4c-1.4-.7-2.9-1.1-4.4-1.3-.2.3-.4.7-.5 1-1.6-.2-3.1-.2-4.7 0-.2-.3-.4-.7-.5-1-1.5.2-3 .6-4.4 1.3C1.7 10 1.1 14.6 1.8 19c1.9 1.4 3.7 2.2 5.5 2.7.4-.6.8-1.2 1.2-1.8-1.9-.7-2.8-1.5-2.8-1.5.6.4 1.2.7 1.8 1 1.4.6 2.9 1 4.5 1s3.1-.3 4.5-1c.6-.3 1.2-.6 1.8-1 0 0-.9.8-2.8 1.5.4.6.8 1.2 1.2 1.8 1.8-.5 3.6-1.3 5.5-2.7.8-5 .1-9.5-2.9-13.6zM8.5 15.3c-.9 0-1.7-.8-1.7-1.8s.8-1.8 1.7-1.8 1.7.8 1.7 1.8-.8 1.8-1.7 1.8zm7 0c-.9 0-1.7-.8-1.7-1.8s.8-1.8 1.7-1.8 1.7.8 1.7 1.8-.8 1.8-1.7 1.8z" fill="#fff"/></svg>'},
     {n:"LinkedIn", b:"#0A66C2", s:'<svg viewBox="0 0 24 24"><path d="M5 8h3.5v11H5V8zm1.8-3.8c1.2 0 2.1.9 2.1 2.1S8 8.4 6.8 8.4 4.7 7.5 4.7 6.3s.9-2.1 2.1-2.1zm5.2 3.8h3.3v1.5c.5-.9 1.7-1.8 3.3-1.8 3.5 0 4.1 2.3 4.1 5.3v6H19v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V19h-3.4V8z" fill="#fff"/></svg>'},
@@ -2162,7 +2160,30 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     {n:"Weather", b:"#38bdf8", s:'<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="4" fill="#fef08a"/><path d="M16 16.5a3.5 3.5 0 00-3-5h-.5a4.5 4.5 0 10-8.5 2h12z" fill="#fff"/></svg>'},
     {n:"Calendar", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M4 8h16v12a4 4 0 01-4 4H8a4 4 0 01-4-4V8z" fill="#e2e8f0"/><path d="M4 8V6a4 4 0 014-4h8a4 4 0 014 4v2H4z" fill="#ef4444"/><text x="12" y="18" font-family="Arial" font-size="9" font-weight="bold" fill="#1e293b" text-anchor="middle">31</text></svg>'},
     {n:"Steam", b:"#171A21", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12c0 2.2.7 4.2 2 5.8l3.6-5.2c0-.1 0-.1-.1-.2-1-1-1-2.6 0-3.6 1-1 2.6-1 3.6 0s1 2.6 0 3.6c-.3.3-.6.4-1 .5l2.4 3.5c.3 0 .5.1.8.1 3 0 5.5-2.5 5.5-5.5S16.4 5.5 13.4 5.5C10.7 5.5 8.4 7.5 8.1 10.1l-2.6 3.8C3.3 12.3 2.5 10.2 2.5 8c0-5.2 4.3-9.5 9.5-9.5s9.5 4.3 9.5 9.5-4.3 9.5-9.5 9.5c-.8 0-1.6-.1-2.4-.3l4.2-6.1c.6-.2 1.1-.6 1.4-1.2l4.8 1.4c.1-.4.2-.8.2-1.3 0-2.8-2.2-5-5-5s-5 2.2-5 5c0 .3 0 .7.1 1l-2.4 3.5z" fill="#fff"/></svg>'},
-    {n:"Cash App", b:"#00D632", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm3.5 13h-2v1.5h-3V15H9.5C8.7 15 8 14.3 8 13.5v-2c0-.8.7-1.5 1.5-1.5h4v-1h-4V7h2V5.5h3V7h1.5c.8 0 1.5.7 1.5 1.5v2c0 .8-.7 1.5-1.5 1.5h-4v1h4v2z" fill="#fff"/></svg>'}
+    {n:"Cash App", b:"#00D632", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm3.5 13h-2v1.5h-3V15H9.5C8.7 15 8 14.3 8 13.5v-2c0-.8.7-1.5 1.5-1.5h4v-1h-4V7h2V5.5h3V7h1.5c.8 0 1.5.7 1.5 1.5v2c0 .8-.7 1.5-1.5 1.5h-4v1h4v2z" fill="#fff"/></svg>'},
+    {n:"Contacts", b:"#3b82f6", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M12 14c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" fill="#fff"/></svg>'},
+    {n:"Files", b:"#eab308", s:'<svg viewBox="0 0 24 24"><path d="M4 4h6l2 2h8c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#fff"/></svg>'},
+    {n:"Compass", b:"#ef4444", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#fff" stroke-width="2"/><polygon points="12,6 15,12 12,18 9,12" fill="#fff"/></svg>'},
+    {n:"Keep", b:"#eab308", s:'<svg viewBox="0 0 24 24"><path d="M9 21h6v-2H9v2zm3-19C8.1 2 5 5.1 5 9c0 2.4 1.2 4.5 3 5.7V17c0 .6.4 1 1 1h6c.6 0 1-.4 1-1v-2.3c1.8-1.2 3-3.3 3-5.7 0-3.9-3.1-7-7-7z" fill="#fff"/></svg>'},
+    {n:"Music", b:"#ec4899", s:'<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" fill="#fff"/></svg>'},
+    {n:"News", b:"#6366f1", s:'<svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 3h7v2h-7V7zm0 4h7v2h-7v-2zM6 7h3v6H6V7zm12 9H6v-2h12v2z" fill="#fff"/></svg>'},
+    {n:"Health", b:"#f43f5e", s:'<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#fff"/></svg>'},
+    {n:"Wallet", b:"#0284c7", s:'<svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" fill="#fff"/></svg>'},
+    {n:"Translate", b:"#2563eb", s:'<svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 5.11.76-4.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="#fff"/></svg>'},
+    {n:"Tasks", b:"#16a34a", s:'<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#fff"/></svg>'},
+    {n:"Podcasts", b:"#a855f7", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 3.54 1.82 6.65 4.58 8.42l1.42-1.42C5.63 17.58 4 15 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 3-1.63 5.58-4 7l1.42 1.42C20.18 18.65 22 15.54 22 12c0-5.52-4.48-10-10-10zm0 5c-2.76 0-5 2.24-5 5 0 1.83 1.03 3.42 2.54 4.24l1.42-1.42C10.28 14.33 10 13.2 10 12c0-1.1.9-2 2-2s2 .9 2 2c0 1.2-.28 2.33-.96 2.82l1.42 1.42C15.97 15.42 17 13.83 17 12c0-2.76-2.24-5-5-5zm0 4c-.55 0-1 .45-1 1v5h2v-5c0-.55-.45-1-1-1z" fill="#fff"/></svg>'},
+    {n:"Books", b:"#f97316", s:'<svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z" fill="#fff"/></svg>'},
+    {n:"Recorder", b:"#dc2626", s:'<svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" fill="#fff"/></svg>'},
+    {n:"Radio", b:"#059669", s:'<svg viewBox="0 0 24 24"><path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H8.3l7.43-3-1.04-1.85L3.24 6.15zM7 17c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-5h-8v-2h8v2zm0 4h-8v-2h8v2z" fill="#fff"/></svg>'},
+    {n:"Security", b:"#0d9488", s:'<svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-7.59L18 8l-8 9z" fill="#fff"/></svg>'},
+    {n:"Games", b:"#4f46e5", s:'<svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H9v2H7v-2H5v-2h2V9h2v2h2v2zm4.5 1c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" fill="#fff"/></svg>'},
+    {n:"Alarm", b:"#ea580c", s:'<svg viewBox="0 0 24 24"><path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86zM7.88 3.39L6.6 1.86 2 5.71l1.29 1.53zM12 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm1-13h-2v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#fff"/></svg>'},
+    {n:"Store", b:"#db2777", s:'<svg viewBox="0 0 24 24"><path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm7 17H5V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h6v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z" fill="#fff"/></svg>'},
+    {n:"Travel", b:"#0891b2", s:'<svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#fff"/></svg>'},
+    {n:"Food", b:"#e11d48", s:'<svg viewBox="0 0 24 24"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.46 3.89 3.42 4.38L5 22h2l1.42-7.1C10.38 14.4 11 12.8 11 11V9zm7-7v12h2V2h-2zm-3 0c-1.66 0-3 1.34-3 3v5c0 1.66 1.34 3 3 3h1V2h-1z" fill="#fff"/></svg>'},
+    {n:"Taxi", b:"#eab308", s:'<svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4h14v4z" fill="#fff"/><circle cx="7.5" cy="15.5" r="1.5" fill="#fff"/><circle cx="16.5" cy="15.5" r="1.5" fill="#fff"/></svg>'},
+    {n:"Fitness", b:"#84cc16", s:'<svg viewBox="0 0 24 24"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.2l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-3.3-1.6-.8 1.8 4.9 2.4z" fill="#fff"/></svg>'},
+    {n:"Movies", b:"#9333ea", s:'<svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H9l2 4H8L6 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z" fill="#fff"/></svg>'}
   ];
 
   // Core dock apps perfectly scaled
@@ -2172,18 +2193,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     {n:"Camera", svg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="#fff"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" fill="#fff"/></svg>', b:"#4b5563"}
   ];
 
-  // Replicate and rigorously scramble the app array 100% safely
-  var safeAppPool = [];
-  while(safeAppPool.length < 75) {
-     safeAppPool = safeAppPool.concat(appIconsList);
-  }
-  safeAppPool = safeAppPool.slice(0, 75);
-  for(var i = safeAppPool.length - 1; i > 0; i--){
-    var j = Math.floor(Math.random() * (i + 1));
-    var temp = safeAppPool[i];
-    safeAppPool[i] = safeAppPool[j];
-    safeAppPool[j] = temp;
-  }
+  // Guaranteed 100% Unique static pool
+  var safeAppPool = [...appIconsList];
 
   function getAppHTML(app, isNotes, isLock){
     if(isNotes) {
@@ -2194,7 +2205,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
         var lockSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>';
         return '<div class="hs-app-wrapper is-lock"><div class="hs-app-icon" style="background:#1e293b; padding:12px;">'+lockSvg+'</div><div class="hs-app-label">Lock</div></div>';
     }
-    // Universal SVG drop
     return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+app.b+';">'+app.s+'</div><div class="hs-app-label">'+app.n+'</div></div>';
   }
 
@@ -2322,7 +2332,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     setTimeout(function(){ hsToast.classList.remove('show'); }, 2000);
   }
 
-  // Bind events safely just once
   var hsEventsBound = false;
   
   function bindHsEvents(){
@@ -2345,7 +2354,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       var col = Math.floor((startX - rect.left) / cellW);
       var row = Math.floor((startY - rect.top) / cellH);
       
-      // Dial Pad is the bottom-right 3x3 block
       if(col >= 1 && col <= 3 && row >= 3 && row <= 5 && startY > rect.top && startY < rect.bottom){
         touchZoneVal = ((row - 3) * 3) + col; 
       } else {
@@ -2359,14 +2367,13 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       var deltaX = e.changedTouches[0].clientX - startX;
       
       if(deltaX < -40 && hsCurrentPage < hsTotalPages - 1){
-        // Valid Swipe Left (Enter digit)
+        // Valid Swipe Left
         hsPinDigits += touchZoneVal;
         hsCurrentPage++;
         hsIsAnimating = true;
         hsPagesWrapper.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
         hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * 100) + 'vw)';
         
-        // Peek verification
         if(hsCurrentPage === hsTotalPages - 1){
            document.getElementById('hsTopTime').textContent = formatPeekTime(hsPinDigits);
         }
@@ -2374,7 +2381,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
         setTimeout(function(){ hsIsAnimating = false; }, 360);
       } 
       else if (deltaX > 40 && hsCurrentPage > 0) {
-        // Valid Swipe Right (Reset to beginning)
+        // Valid Swipe Right
         hsCurrentPage = 0;
         hsPinDigits = '';
         hsIsAnimating = true;
@@ -2385,7 +2392,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       } 
     }, {passive:true});
     
-    // Ghost-Click Safe Handlers! Standard click overrides the ghost completely.
     hsPagesWrapper.addEventListener('click', function(e){
       if(e.target.closest('.is-notes')){
         e.stopPropagation();
@@ -2419,7 +2425,6 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     homeScreenFlow.classList.add('open');
   }
   function exitHsFlow(){
-    // Safely delays the display:none to fully absorb any lingering ghost touches
     setTimeout(function() {
       homeScreenFlow.classList.remove('open');
     }, 350);
