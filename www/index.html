@@ -339,6 +339,24 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 #lockBgRemoveBtn, #hsBgRemoveBtn, #hsIconRemoveBtn {color:var(--danger); display:none;}
 #lockBgRemoveBtn.show, #hsBgRemoveBtn.show, #hsIconRemoveBtn.show {display:inline-block;}
 
+.app-icon-list{
+  display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto;
+  padding-right:2px; margin-top:6px;
+}
+.app-icon-row{
+  display:flex; align-items:center; gap:12px; padding:8px; border-radius:16px;
+  background:var(--glass-fill); border:1px solid var(--glass-border);
+}
+.app-icon-thumb{
+  width:40px; height:40px; border-radius:11px; overflow:hidden; flex:0 0 auto;
+  background:#111; display:flex; align-items:center; justify-content:center;
+}
+.app-icon-thumb svg{width:100%; height:100%; display:block;}
+.app-icon-name{flex:1; font-size:13px; font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.app-icon-actions{display:flex; gap:6px; flex:0 0 auto;}
+.app-icon-actions .btn-pill{padding:6px 12px; font-size:11.5px;}
+.app-icon-reset{color:var(--danger);}
+
 #effectEditor{z-index:85;}
 .effect-name-input{
   width:100%; background:none; border:none; outline:none; color:var(--text-primary);
@@ -475,9 +493,13 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   z-index:1; filter:brightness(0.85);
 }
 
-/* Status Bar pushed flush to absolute top edge + clock shifted 2mm right */
+/* Status bar sits flush at the true top:0 edge, like the real system status
+   bar does. padding-top (not top) absorbs a genuine display-cutout inset, so
+   on ordinary devices (inset = 0) the bar itself never gets pushed down -
+   only its content would nudge if a cutout is actually present. */
 .hs-top-bar{
-  position:absolute; top:env(safe-area-inset-top, 0px); left:16px; right:16px; height:28px;
+  position:absolute; top:0; left:16px; right:16px; height:28px;
+  padding-top:env(safe-area-inset-top, 0px); box-sizing:content-box;
   display:flex; justify-content:space-between; align-items:center; z-index:5;
   color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
 }
@@ -544,6 +566,18 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   border-radius:32px; padding:0 8px;
 }
 .hs-dock .hs-app-label{display:none;}
+
+/* Page dots indicator */
+.hs-page-dots{
+  position:absolute; bottom:calc(env(safe-area-inset-bottom,0px) + 104px); left:0; right:0;
+  z-index:12; display:flex; justify-content:center; align-items:center; gap:7px;
+  pointer-events:none;
+}
+.hs-page-dots .hs-dot{
+  width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.4);
+  transform:scale(1); transition:background .2s ease, transform .2s cubic-bezier(.34,1.56,.64,1);
+}
+.hs-page-dots .hs-dot.active{background:rgba(255,255,255,0.95); transform:scale(1.25);}
 
 #hsToast{
   position:fixed; bottom:130px; left:50%; transform:translateX(-50%);
@@ -741,6 +775,10 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       </div>
       <input type="file" id="hsIconFileInput" accept="image/*" style="display:none;">
 
+      <div class="outs-label" style="margin-top:14px;">Other App Icons</div>
+      <p class="effect-body-hint" style="margin-top:-2px;">Pick any fake app below and replace its icon with a photo from your gallery. Anything you don't change keeps its original icon.</p>
+      <div class="app-icon-list" id="appIconList"></div>
+
       <p class="effect-body-hint" style="margin-top:14px;">The 3x3 app grid above the dock acts as a 1-9 dial pad. Swipe left starting from any of those 9 icons to log a number. Swipe left from anywhere else to log a 0. Swipe right to reset the code.</p>
     </div>
   </div>
@@ -830,6 +868,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     </div>
   </div>
   <div id="hsPagesWrapper"></div>
+  <div class="hs-page-dots" id="hsPageDots"></div>
   <div class="hs-dock" id="hsDock"></div>
   <div id="hsToast">App not installed</div>
 </div>
@@ -1635,6 +1674,56 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     magic.hsNotesIcon = null; saveMagic(); renderLockBgUI();
   });
 
+  // Per-app custom icon list (populated once appIconsList/coreApps exist below)
+  var appIconListEl = document.getElementById('appIconList');
+  function getCustomizableAppsList(){
+    return coreApps.map(function(a){ return {n:a.n, b:a.b, s:a.svg}; }).concat(appIconsList);
+  }
+  function renderAppIconList(){
+    if(!appIconListEl) return;
+    if(!magic.customAppIcons) magic.customAppIcons = {};
+    appIconListEl.innerHTML = '';
+    getCustomizableAppsList().forEach(function(app){
+      var custom = magic.customAppIcons[app.n];
+      var padVal = (app.p !== undefined) ? app.p : 10;
+      var thumbInner = custom
+        ? '<img src="'+custom+'" style="width:100%; height:100%; object-fit:cover; display:block;">'
+        : '<div style="width:100%; height:100%; box-sizing:border-box; padding:'+padVal+'px; background:'+app.b+';">'+app.s+'</div>';
+      var row = document.createElement('div');
+      row.className = 'app-icon-row';
+      row.innerHTML =
+        '<div class="app-icon-thumb">'+thumbInner+'</div>' +
+        '<div class="app-icon-name">'+app.n+'</div>' +
+        '<div class="app-icon-actions">' +
+          '<div class="btn-pill glass app-icon-change">Change</div>' +
+          (custom ? '<div class="btn-pill glass app-icon-reset">Reset</div>' : '') +
+        '</div>';
+      row.querySelector('.app-icon-change').addEventListener('click', function(){
+        var inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        inp.addEventListener('change', function(e){
+          var file = e.target.files && e.target.files[0];
+          if(!file) return;
+          resizeImageFile(file, 512, function(dataUrl){
+            magic.customAppIcons[app.n] = dataUrl;
+            saveMagic();
+            renderAppIconList();
+          });
+        });
+        inp.click();
+      });
+      var resetBtn = row.querySelector('.app-icon-reset');
+      if(resetBtn){
+        resetBtn.addEventListener('click', function(){
+          delete magic.customAppIcons[app.n];
+          saveMagic();
+          renderAppIconList();
+        });
+      }
+      appIconListEl.appendChild(row);
+    });
+  }
+
   // Lock Mode Toggle
   var lockModeClassicBtn = document.getElementById('lockModeClassicBtn');
   var lockModeHsBtn = document.getElementById('lockModeHsBtn');
@@ -1656,6 +1745,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     updateLockModeUI();
     renderEffectsList();
     renderLockBgUI();
+    renderAppIconList();
     magicSettings.classList.add('open');
   }
   function closeMagicSettings(){
@@ -2003,10 +2093,14 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   /* ---------------- CLASSIC LOCK FLOW ---------------- */
   var lockFlow = document.getElementById('lockFlow');
   function requestImmersiveFullscreen(elContainer){
-    if(document.fullscreenElement || document.webkitFullscreenElement) return;
-    var el = document.documentElement;
-    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if(req){ try{ req.call(el); }catch(e){} }
+    // No-op: immersive/fullscreen is owned entirely by MainActivity.java on the
+    // native side now (it re-hides the system bars on every inset change, not
+    // just on focus change). The web Fullscreen API call this used to make was
+    // redundant in a native Capacitor shell and, on some OEM WebView builds,
+    // could itself fight with the native immersive flags - which was the real
+    // cause of the real Android status bar occasionally showing up instead of
+    // the app's own fake one. Left as a no-op function (rather than removed
+    // outright) so the existing call sites below don't need touching.
   }
   lockFlow.addEventListener('touchstart', function(){ requestImmersiveFullscreen(); }, {passive:true});
   lockFlow.addEventListener('click', function(){ requestImmersiveFullscreen(); });
@@ -2113,6 +2207,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   var hsPagesWrapper = document.getElementById('hsPagesWrapper');
   var hsDock = document.getElementById('hsDock');
   var hsToast = document.getElementById('hsToast');
+  var hsPageDots = document.getElementById('hsPageDots');
   
   homeScreenFlow.addEventListener('touchstart', function(){ requestImmersiveFullscreen(); }, {passive:true});
   homeScreenFlow.addEventListener('click', function(){ requestImmersiveFullscreen(); });
@@ -2124,42 +2219,42 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   
   // 75 UNIQUE Offline Clean Vector SVGs (No repeats across any page)
   var appIconsList = [
-    {n:"Chrome", b:"#fff", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#fff"/><path d="M12 1.5a10.5 10.5 0 019.09 5.25H12a10.5 10.5 0 00-9.09 5.25L7.46 20.3A10.5 10.5 0 0112 1.5z" fill="#ea4335"/><path d="M22.5 12a10.5 10.5 0 01-5.25 9.09l-4.55-7.88a10.5 10.5 0 005.25-9.09H22.5z" fill="#fbbc04"/><path d="M12 22.5A10.5 10.5 0 012.91 17.25L7.46 9.37A10.5 10.5 0 0012 22.5z" fill="#34a853"/><circle cx="12" cy="12" r="4.7" fill="#fff"/><circle cx="12" cy="12" r="3.7" fill="#4285f4"/></svg>'},
-    {n:"WhatsApp", b:"#25D366", s:'<svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 00-6.8 12.2l-1.2 3.6 3.7-1.2A8 8 0 1012 4zm4.2 11.5c-.2.6-1.1 1.1-1.6 1.1-.4 0-.9-.1-1.6-.4-2-.8-3.3-2.9-3.4-3-.1-.1-.8-1.1-.8-2.1 0-1 .5-1.5.7-1.8.2-.2.5-.3.8-.3.2 0 .4 0 .6.4.2.6.7 1.6.7 1.8 0 .2-.1.4-.2.6-.1.1-.3.3-.4.4-.1.1-.3.3-.2.5.2.4.6.8 1 1.2.5.4 1 .7 1.3.9.2.1.4.1.6-.1.1-.2.3-.5.5-.7.2-.2.4-.2.6-.1.2.1 1.4.7 1.6.8.2.1.4.2.4.3 0 .3 0 1.2-.2 1.8z" fill="#fff"/></svg>'},
-    {n:"Instagram", b:"#E1306C", s:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="16.5" cy="7.5" r="1.2" fill="#fff"/></svg>'},
+    {n:"Chrome", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M12 12 L12 2 A10 10 0 0 1 20.66 17 Z" fill="#EA4335"/><path d="M12 12 L20.66 17 A10 10 0 0 1 3.34 17 Z" fill="#FBBC04"/><path d="M12 12 L3.34 17 A10 10 0 0 1 12 2 Z" fill="#34A853"/><circle cx="12" cy="12" r="4.6" fill="#fff"/><circle cx="12" cy="12" r="3.6" fill="#4285F4"/></svg>'},
+    {n:"WhatsApp", b:"#25D366", p:15, s:'<svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="#fff"/></svg>'},
+    {n:"Instagram", b:"linear-gradient(45deg,#f9ce34 0%,#ee2a7b 50%,#6228d7 100%)", s:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="16.5" cy="7.5" r="1.2" fill="#fff"/></svg>'},
     {n:"YouTube", b:"#FF0000", s:'<svg viewBox="0 0 24 24"><path d="M21.6 7.2s-.2-1.5-.8-2.1c-.8-.9-1.8-.9-2.2-1C15.5 3.8 12 3.8 12 3.8s-3.5 0-6.6.3c-.4.1-1.4.1-2.2 1-.6.6-.8 2.1-.8 2.1S2.2 8.9 2.2 10.6v2.8c0 1.7.2 3.4.2 3.4s.2 1.5.8 2.1c.8.9 2 .9 2.4 1 1.8.2 6.4.3 6.4.3s3.5 0 6.6-.3c.4-.1 1.4-.1 2.2-1 .6-.6.8-2.1.8-2.1s.2-1.7.2-3.4v-2.8c0-1.7-.2-3.4-.2-3.4z" fill="#fff"/><path d="M9.8 15.5l6.4-3.5-6.4-3.5v7z" fill="#FF0000"/></svg>'},
-    {n:"Maps", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5s1.1-2.5 2.5-2.5 2.5 1.1 2.5 2.5-1.1 2.5-2.5 2.5z" fill="#ea4335"/><path d="M12 4.5c-2.5 0-4.5 2-4.5 4.5 0 1.5.8 3 1.9 3.9l2.6-3.1L12 4.5z" fill="#4285f4"/><path d="M16.5 9c0-1.2-.5-2.3-1.3-3.1L12 9.8 16.5 9z" fill="#34a853"/></svg>'},
-    {n:"Gmail", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M4 18V6l8 6 8-6v12H4z" fill="#ea4335" opacity="0.1"/><path d="M4 6l8 6 8-6v3l-8 6-8-6V6z" fill="#ea4335"/><path d="M4 18v-9l8 6 8-6v9H4z" fill="#fbbc04"/><path d="M20 18v-9l-8-6-8 6v9h3v-7l5-3.8L17 11v7h3z" fill="#4285f4"/></svg>'},
-    {n:"Photos", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M12 12L5.5 5.5C4 7 4 9 4 12h8z" fill="#ea4335"/><path d="M12 12l6.5-6.5C17 4 15 4 12 4v8z" fill="#fbbc04"/><path d="M12 12l6.5 6.5C20 17 20 15 20 12h-8z" fill="#34a853"/><path d="M12 12l-6.5 6.5C7 20 9 20 12 20v-8z" fill="#4285f4"/></svg>'},
+    {n:"Maps", b:"#fff", p:5, s:'<svg viewBox="0 0 24 24"><path d="M12 1.5C7.86 1.5 4.5 4.86 4.5 9c0 5.7 6.6 12.9 7 13.35a.7.7 0 0 0 1 0c.4-.45 7-7.65 7-13.35 0-4.14-3.36-7.5-7.5-7.5z" fill="#EA4335"/><circle cx="12" cy="9" r="3.4" fill="#fff"/></svg>'},
+    {n:"Gmail", b:"#fff", s:'<svg viewBox="0 0 24 24"><rect x="3.3" y="6.3" width="17.4" height="12.4" rx="1.6" fill="#fff" stroke="#e2e5e9" stroke-width="0.6"/><path d="M3.3 7.8v9.3c0 .87.7 1.6 1.6 1.6h3V12.2z" fill="#4285F4"/><path d="M20.7 7.8v9.3c0 .87-.7 1.6-1.6 1.6h-3V12.2z" fill="#34A853"/><path d="M9.3 18.7h5.4v-6.5l-2.7 2.1-2.7-2.1z" fill="#FBBC04"/><path d="M3.3 7.3a1.6 1.6 0 011.6-1.6h14.2a1.6 1.6 0 011.6 1.6L12 14 3.3 7.3z" fill="#EA4335"/></svg>'},
+    {n:"Photos", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M7 7A5 5 0 0 1 17 7 Z" fill="#EA4335"/><path d="M17 7A5 5 0 0 1 17 17 Z" fill="#FBBC04"/><path d="M17 17A5 5 0 0 1 7 17 Z" fill="#34A853"/><path d="M7 17A5 5 0 0 1 7 7 Z" fill="#4285F4"/></svg>'},
     {n:"Play Store", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M5.5 4v16L19 12 5.5 4z" fill="#ea4335"/><path d="M5.5 4l7 5.5L19 12 5.5 4z" fill="#fbbc04"/><path d="M5.5 20l7-5.5L19 12 5.5 20z" fill="#34a853"/><path d="M5.5 4v16l7-8-7-8z" fill="#4285f4"/></svg>'},
-    {n:"Spotify", b:"#1DB954", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.6 14.4c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.3.1-.7-.1-.8-.4-.1-.3.1-.7.4-.8 4-.9 7.4-.5 10.2 1.1.3.2.4.6.2.9zm1.3-2.9c-.3.4-.8.5-1.2.3-2.9-1.8-7.3-2.4-10.9-1.3-.4.1-.9-.1-1-.6-.1-.5.1-.9.6-1 4.1-1.2 9-1.2 12.3 1.4.4.2.5.8.2 1.2zm.1-3.1C16.5 8.5 10.4 8.3 7 9.3c-.5.2-1.1-.1-1.2-.6-.2-.5.1-1.1.6-1.2 3.8-1.2 10.6-1 14.7 1.5.5.3.6.9.3 1.4-.3.5-.9.6-1.5.3z" fill="#fff"/></svg>'},
-    {n:"TikTok", b:"#000", s:'<svg viewBox="0 0 24 24"><path d="M16.5 9c-.8 0-1.5-.2-2.1-.6V14a3.4 3.4 0 11-3.4-3.4v2.4a1 1 0 101 1V5h2.4a4.6 4.6 0 004.1 4.6V12a7 7 0 01-2-.3v-2.7z" fill="#fff"/><path d="M14.4 8.4c-.2-.1-.5-.2-.8-.4v1.8c.3.2.6.3.8.4V8.4z" fill="#69C9D0"/><path d="M12 11.6v-2.4a3.4 3.4 0 00-1 6.6v-2.4a1 1 0 011-1.8z" fill="#EE1D52"/></svg>'},
+    {n:"Spotify", b:"#1DB954", s:'<svg viewBox="0 0 24 24"><path d="M17.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.32-1.32 9.6-.66 13.26 1.56.361.181.54.78.48 1.26zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.72 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z" fill="#fff"/></svg>'},
+    {n:"TikTok", b:"#000", s:'<svg viewBox="0 0 24 24"><g><path d="M14.8 3.7c.4 1.9 1.7 3.2 3.6 3.5v2.9c-1.3 0-2.6-.4-3.6-1.1v5.9c0 3-2.4 5.4-5.4 5.4S4 17.9 4 14.9c0-2.9 2.3-5.3 5.2-5.4v3c-1.3-.1-2.4 1-2.4 2.4 0 1.3 1.1 2.4 2.4 2.4 1.4 0 2.6-1.1 2.6-2.5V1.5h3z" fill="#25F4EE" transform="translate(-0.8,0.4)"/><path d="M14.8 3.7c.4 1.9 1.7 3.2 3.6 3.5v2.9c-1.3 0-2.6-.4-3.6-1.1v5.9c0 3-2.4 5.4-5.4 5.4S4 17.9 4 14.9c0-2.9 2.3-5.3 5.2-5.4v3c-1.3-.1-2.4 1-2.4 2.4 0 1.3 1.1 2.4 2.4 2.4 1.4 0 2.6-1.1 2.6-2.5V1.5h3z" fill="#FE2C55" transform="translate(0.8,-0.4)"/><path d="M14.8 3.7c.4 1.9 1.7 3.2 3.6 3.5v2.9c-1.3 0-2.6-.4-3.6-1.1v5.9c0 3-2.4 5.4-5.4 5.4S4 17.9 4 14.9c0-2.9 2.3-5.3 5.2-5.4v3c-1.3-.1-2.4 1-2.4 2.4 0 1.3 1.1 2.4 2.4 2.4 1.4 0 2.6-1.1 2.6-2.5V1.5h3z" fill="#fff"/></g></svg>'},
     {n:"Settings", b:"#4b5563", s:'<svg viewBox="0 0 24 24"><path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2.1-1.6c.2-.2.3-.4.2-.6l-2-3.5c-.1-.2-.3-.3-.6-.2l-2.5 1c-.5-.4-1.1-.7-1.7-1l-.4-2.7c0-.2-.2-.4-.5-.4h-4c-.3 0-.5.2-.5.4l-.4 2.7c-.6.3-1.2.6-1.7 1l-2.5-1c-.2-.1-.5 0-.6.2l-2 3.5c-.1.2 0 .5.2.6l2.1 1.6c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2.1 1.6c-.2.2-.3.4-.2.6l2 3.5c.1.2.3.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.7c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5c.1-.2 0-.5-.2-.6l-2.1-1.6zM12 15.5A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z" fill="#fff"/></svg>'},
-    {n:"Word", b:"#2B579A", s:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="#2B579A"/><path d="M7 8l2.5 8h2L12 11l.5 5h2L17 8h-2l-1.3 5.5L12.5 8h-1L10.3 13.5 9 8H7z" fill="#fff"/></svg>'},
-    {n:"Excel", b:"#217346", s:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" fill="#217346"/><path d="M8 8l3 4-3 4h2l2-2.8 2 2.8h2l-3-4 3-4h-2l-2 2.8L10 8H8z" fill="#fff"/></svg>'},
-    {n:"ChatGPT", b:"#10A37F", s:'<svg viewBox="0 0 24 24"><path d="M12 3a4.5 4.5 0 00-4.3 3.2A4.5 4.5 0 004 10.5c0 .6.1 1.2.3 1.7A4.5 4.5 0 005 17.5a4.5 4.5 0 003.7 3.3A4.5 4.5 0 0012 21a4.5 4.5 0 004.3-3.2 4.5 4.5 0 003.7-4.3c0-.6-.1-1.2-.3-1.7A4.5 4.5 0 0019 6.5a4.5 4.5 0 00-3.7-3.3A4.5 4.5 0 0012 3zm0 3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-3 0v-3A1.5 1.5 0 0112 6zm-4.5 4.5a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-3 0v-3a1.5 1.5 0 011.5-1.5zm9 0a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-3 0v-3a1.5 1.5 0 011.5-1.5z" fill="#fff"/></svg>'},
-    {n:"Xbox", b:"#107C10", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="#107C10"/><path d="M7 6.8c1.8 1.8 3.5 3.7 5 3.7s3.2-1.9 5-3.7c-1.3-1.1-3-1.8-5-1.8s-3.7.7-5 1.8zm-1.8 9.4c1.8-.8 4.2-2.8 5.8-5-1.8 2-3.8 3.8-5.8 5zm13.6 0c-2-.8-4-3-5.8-5 1.6 2.2 4 4.2 5.8 5z" fill="#fff"/></svg>'},
-    {n:"PlayStation", b:"#003791", s:'<svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.5-.4 3.5-.8 5-.8v2.2c-1.5 0-3.5.4-5 .8v-2.2zm7.5-6.5v8.5c0 .8-.8 1.5-1.8 1.5s-1.8-.7-1.8-1.5V6.8l-4-1.3V18c2 .8 4.5 1.2 6.8 1.2 2.5 0 4.2-.6 4.2-2 0-.8-1.2-1.5-3.4-2.2V7l-3-.5z" fill="#fff"/></svg>'},
+    {n:"Word", b:"#2B579A", s:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5" fill="#2B579A"/><path d="M6.2 8h2.1l1.7 7.2L11.8 8h1.9l1.8 7.2L17.2 8h2.1l-2.7 10h-2.1l-1.7-7-1.7 7H8.9L6.2 8z" fill="#fff"/></svg>'},
+    {n:"Excel", b:"#217346", s:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5" fill="#217346"/><path d="M7 8l3.2 4-3.2 4h2.4l2-2.9 2 2.9h2.4l-3.2-4 3.2-4h-2.4l-2 2.9-2-2.9H7z" fill="#fff"/></svg>'},
+    {n:"ChatGPT", b:"#000", p:7, s:'<svg viewBox="0 0 24 24"><g fill="#fff"><rect x="10.3" y="2.6" width="3.4" height="8" rx="1.7"/><rect x="10.3" y="2.6" width="3.4" height="8" rx="1.7" transform="rotate(60 12 12)"/><rect x="10.3" y="2.6" width="3.4" height="8" rx="1.7" transform="rotate(120 12 12)"/><rect x="10.3" y="2.6" width="3.4" height="8" rx="1.7" transform="rotate(180 12 12)"/><rect x="10.3" y="2.6" width="3.4" height="8" rx="1.7" transform="rotate(240 12 12)"/><rect x="10.3" y="2.6" width="3.4" height="8" rx="1.7" transform="rotate(300 12 12)"/></g><circle cx="12" cy="12" r="2.4" fill="#000"/></svg>'},
+    {n:"Xbox", b:"#107C10", p:0, s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#107C10"/><g fill="#fff"><rect x="10.6" y="4.5" width="2.8" height="15" rx="1.4" transform="rotate(45 12 12)"/><rect x="10.6" y="4.5" width="2.8" height="15" rx="1.4" transform="rotate(-45 12 12)"/></g></svg>'},
+    {n:"PlayStation", b:"linear-gradient(135deg,#0072CE,#003791)", s:'<svg viewBox="0 0 24 24"><text x="12" y="16" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="800" fill="#fff" text-anchor="middle">PS</text></svg>'},
     {n:"Notion", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M5 6h14v13H5V6zm2 2v9h2V9l5 6h2V8h-2v5.5L9 8H7z" fill="#000"/></svg>'},
     {n:"Discord", b:"#5865F2", s:'<svg viewBox="0 0 24 24"><path d="M19.3 5.4c-1.4-.7-2.9-1.1-4.4-1.3-.2.3-.4.7-.5 1-1.6-.2-3.1-.2-4.7 0-.2-.3-.4-.7-.5-1-1.5.2-3 .6-4.4 1.3C1.7 10 1.1 14.6 1.8 19c1.9 1.4 3.7 2.2 5.5 2.7.4-.6.8-1.2 1.2-1.8-1.9-.7-2.8-1.5-2.8-1.5.6.4 1.2.7 1.8 1 1.4.6 2.9 1 4.5 1s3.1-.3 4.5-1c.6-.3 1.2-.6 1.8-1 0 0-.9.8-2.8 1.5.4.6.8 1.2 1.2 1.8 1.8-.5 3.6-1.3 5.5-2.7.8-5 .1-9.5-2.9-13.6zM8.5 15.3c-.9 0-1.7-.8-1.7-1.8s.8-1.8 1.7-1.8 1.7.8 1.7 1.8-.8 1.8-1.7 1.8zm7 0c-.9 0-1.7-.8-1.7-1.8s.8-1.8 1.7-1.8 1.7.8 1.7 1.8-.8 1.8-1.7 1.8z" fill="#fff"/></svg>'},
     {n:"LinkedIn", b:"#0A66C2", s:'<svg viewBox="0 0 24 24"><path d="M5 8h3.5v11H5V8zm1.8-3.8c1.2 0 2.1.9 2.1 2.1S8 8.4 6.8 8.4 4.7 7.5 4.7 6.3s.9-2.1 2.1-2.1zm5.2 3.8h3.3v1.5c.5-.9 1.7-1.8 3.3-1.8 3.5 0 4.1 2.3 4.1 5.3v6H19v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V19h-3.4V8z" fill="#fff"/></svg>'},
     {n:"GitHub", b:"#181717", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12c0 4.42 2.86 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.69c-2.78.6-3.36-1.34-3.36-1.34-.45-1.15-1.11-1.46-1.11-1.46-.91-.62.07-.61.07-.61 1.01.07 1.54 1.04 1.54 1.04.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02.8-.22 1.65-.33 2.5-.33.85 0 1.7.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.75c0 .26.18.58.69.48C19.14 20.16 22 16.42 22 12c0-5.53-4.47-10-10-10z" fill="#fff"/></svg>'},
     {n:"Facebook", b:"#1877F2", s:'<svg viewBox="0 0 24 24"><path d="M16 8h-2c-1.1 0-2 .9-2 2v2h4l-1 4h-3v8h-4v-8H5v-4h3v-2.5C8 6.5 10.5 4 13.5 4H17v4z" fill="#fff"/></svg>'},
     {n:"X", b:"#000", s:'<svg viewBox="0 0 24 24"><path d="M18.2 4H21l-6 6.8L22 20h-5.5l-4.3-5.6L7.3 20H4.5l6.5-7.4L4 4h5.6l3.9 5.2L18.2 4zm-1 14.5h1.5L8 5.5H6.3l10.9 13z" fill="#fff"/></svg>'},
-    {n:"Snapchat", b:"#FFFC00", s:'<svg viewBox="0 0 24 24"><path d="M12 4c-3 0-5 2-5 5 0 1 .5 2 1 2.5-.8 0-2 .8-2 2 0 1 1 1.5 2 1.5 0 1 1 2.5 4 2.5s4-1.5 4-2.5c1 0 2-.5 2-1.5 0-1.2-1.2-2-2-2 .5-.5 1-1.5 1-2.5 0-3-2-5-5-5z" fill="#000"/></svg>'},
+    {n:"Snapchat", b:"#FFFC00", s:'<svg viewBox="0 0 24 24"><path d="M12 4.2c-2.7 0-4.4 1.9-4.5 4.4 0 .6 0 1.4.2 2.1-.3.1-.7.1-1 .1-.4 0-.8.2-.9.5-.1.3 0 .6.5.9.3.2.9.4 1.3.5.1.3.1.7.4.9-.2.5-.6 1-1.2 1.3-.2.1-.4.3-.3.5.1.4.8.6 1.4.7.1.2.1.5.3.7.4.4 1.5.3 2 .2.5.7 1.3 1.2 2.3 1.2s1.8-.5 2.3-1.2c.5.1 1.6.2 2-.2.2-.2.2-.5.3-.7.6-.1 1.3-.3 1.4-.7.1-.2-.1-.4-.3-.5-.6-.3-1-.8-1.2-1.3.3-.2.3-.6.4-.9.4-.1 1-.3 1.3-.5.5-.3.6-.6.5-.9-.1-.3-.5-.5-.9-.5-.3 0-.7 0-1-.1.2-.7.2-1.5.2-2.1-.1-2.5-1.8-4.4-4.5-4.4z" fill="#fff" stroke="#000" stroke-width="0.4"/></svg>'},
     {n:"Zoom", b:"#2D8CFF", s:'<svg viewBox="0 0 24 24"><path d="M15.5 11v-2c0-1.1-.9-2-2-2h-7c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h7c1.1 0 2-.9 2-2v-2l4 3.5v-9L15.5 11z" fill="#fff"/></svg>'},
-    {n:"Uber", b:"#000", s:'<svg viewBox="0 0 24 24"><path d="M12 4C7.6 4 4 7.6 4 12s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm4 9h-3v3h-2v-3H8v-2h3V8h2v3h3v2z" fill="#fff"/></svg>'},
+    {n:"Uber", b:"#000", p:6, s:'<svg viewBox="0 0 24 24"><text x="12" y="15.8" font-family="Helvetica,Arial,sans-serif" font-size="9.4" font-weight="800" letter-spacing="0.1" fill="#fff" text-anchor="middle">Uber</text></svg>'},
     {n:"Airbnb", b:"#FF5A5F", s:'<svg viewBox="0 0 24 24"><path d="M12 2.5c-.7 0-1.4.3-1.9.9L3.5 10c-.8.8-.8 2.2 0 3 .2.2.5.4.9.5v5.5c0 1.4 1.1 2.5 2.5 2.5h10c1.4 0 2.5-1.1 2.5-2.5v-5.5c.3-.1.6-.3.9-.5.8-.8.8-2.2 0-3L13.9 3.4c-.5-.6-1.2-.9-1.9-.9zM7 13.6c1.1-.6 2.3-1 3.5-1.1.5-.1 1-.1 1.5 0 1.2.1 2.4.5 3.5 1.1v5.4h-8.5v-5.4z" fill="#fff"/></svg>'},
     {n:"Pinterest", b:"#E60023", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12c0 4.3 2.7 8 6.5 9.4-.1-.8-.2-2.1.1-3l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.5 1.8-2.5.8 0 1.2.6 1.2 1.3 0 .8-.5 2-.8 3.1-.2.9.5 1.6 1.3 1.6 1.6 0 2.8-1.7 2.8-4.2 0-2.2-1.6-3.8-3.9-3.8-2.7 0-4.3 2-4.3 4.1 0 .8.3 1.7.7 2.2.1.1.1.2 0 .3l-.2 1c0 .1-.1.1-.3.1-1.1-.5-1.8-2.1-1.8-3.4 0-2.7 2-5.3 5.8-5.3 3.1 0 5.4 2.2 5.4 5.1 0 3.1-1.9 5.5-4.6 5.5-.9 0-1.7-.5-2-.1l-.6 2.1c-.2.7-.6 1.6-.9 2.2C10.1 21.8 11 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2z" fill="#fff"/></svg>'},
-    {n:"Telegram", b:"#26A5E4", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.5 7.5L15 17.8c-.1.5-.5.7-.9.4l-2.6-1.9-1.3 1.2c-.1.1-.3.2-.5.2l.2-2.7 4.9-4.4c.2-.2-.1-.3-.3-.1l-6 3.8-2.6-.8c-.6-.2-.6-.6.1-.9l10-3.9c.5-.2.9.1.8.8z" fill="#fff"/></svg>'},
-    {n:"Reddit", b:"#FF4500", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#FF4500"/><path d="M16 11.5c0-.8-.7-1.5-1.5-1.5-.4 0-.8.1-1.1.4-.9-.6-2.1-1-3.4-1l.7-3.3 2.3.5c0 .7.6 1.2 1.3 1.2.7 0 1.2-.6 1.2-1.3s-.6-1.2-1.3-1.2c-.5 0-1 .3-1.2.7l-2.6-.5c-.1 0-.2.1-.2.2l-.8 3.5c-1.3.1-2.5.5-3.4 1.1-.3-.2-.7-.4-1.1-.4-.8 0-1.5.7-1.5 1.5 0 .6.3 1.1.8 1.4-.1.3-.1.5-.1.8 0 2.8 2.9 5 6.5 5s6.5-2.2 6.5-5c0-.3 0-.6-.1-.8.4-.2.8-.8.8-1.4zm-7.5 2.5c.6 0 1 .4 1 1s-.4 1-1 1-1-.4-1-1 .4-1 1-1zm3.5 3c-1 .8-2.5.8-3.5 0-.2-.1-.2-.4 0-.5.1-.2.4-.2.5 0 .7.5 1.8.5 2.5 0 .1-.2.4-.2.5 0 .2.1.2.4 0 .5zm-1.5-3c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1z" fill="#fff"/></svg>'},
+    {n:"Telegram", b:"linear-gradient(135deg,#2AABEE,#229ED9)", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.5 7.5L15 17.8c-.1.5-.5.7-.9.4l-2.6-1.9-1.3 1.2c-.1.1-.3.2-.5.2l.2-2.7 4.9-4.4c.2-.2-.1-.3-.3-.1l-6 3.8-2.6-.8c-.6-.2-.6-.6.1-.9l10-3.9c.5-.2.9.1.8.8z" fill="#fff"/></svg>'},
+    {n:"Reddit", b:"#FF4500", p:0, s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#FF4500"/><circle cx="6.2" cy="12.6" r="2" fill="#fff"/><circle cx="17.8" cy="12.6" r="2" fill="#fff"/><line x1="12" y1="10" x2="12.6" y2="4.6" stroke="#fff" stroke-width="1"/><circle cx="12.9" cy="3.6" r="1.6" fill="#fff"/><ellipse cx="12" cy="14.8" rx="7.6" ry="6.2" fill="#fff"/><ellipse cx="8.9" cy="14" rx="1.35" ry="1.6" fill="#FF4500"/><ellipse cx="15.1" cy="14" rx="1.35" ry="1.6" fill="#FF4500"/><path d="M8.3 17.2c1.1 1.1 2.4 1.6 3.7 1.6s2.6-.5 3.7-1.6" stroke="#FF4500" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>'},
     {n:"Twitch", b:"#9146FF", s:'<svg viewBox="0 0 24 24"><path d="M4.5 3l-1.5 4v12h4v3l3-3h3l5-5V3H4.5zm11.5 10l-2.5 2.5H10L8 17v-1.5H6V4.5h10v8.5zm-5.5-4.5v4H9v-4h1.5zm3.5 0v4h-1.5v-4H14z" fill="#fff"/></svg>'},
-    {n:"Amazon", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M14.7 15.6c-1.8 1.2-4.1 1.8-6.5 1.8-2.6 0-5.1-.8-6.9-2.1-.2-.1-.2-.4 0-.5 1.5-1 3.2-1.6 5-1.6 2.1 0 4 .8 5.7 2 .3.2.6.4.7.7.1.3-.1.6-.4.7-1.4.9-3 1.4-4.7 1.4-1.2 0-2.3-.2-3.4-.6-.2-.1-.4.1-.3.3 1.5 2 4.1 3.2 7 3.2 2 0 4-.5 5.7-1.5.3-.2.5-.5.4-.8-.1-.4-.5-.6-.8-.5-.8.3-1.6.5-2.5.5zm6.5-2.3c-.6-.4-1.2-.7-1.8-1.1-.3-.2-.5-.1-.6.1-.5.9-1.2 1.7-2.1 2.3-.3.2-.2.5.1.6.7.2 1.4.4 2.1.5.3 0 .5-.2.5-.4.2-1 .6-1.8 1.2-2.5.1-.2.5-.2.6.1.1.2.2.4.2.6 0 .4-.1.8-.2 1.1v-.1c0-.1 0-.1 0 0v-1.2z" fill="#FF9900"/><path d="M14.4 5.3c-.8-.4-1.8-.6-2.9-.6-2.5 0-4.6 1.4-4.6 3.8 0 2 1.5 3.3 3.5 3.3 1.3 0 2.4-.6 3.1-1.6v1.3c0 .3.2.5.5.5h2.1c.3 0 .5-.2.5-.5V5.5c0-2-1.2-3.4-3.5-3.4-1.9 0-3.3 1-3.6 2.6-.1.2.1.4.3.4h2c.2 0 .4-.1.4-.3.2-.7.8-1 1.5-1 .8 0 1.3.4 1.3 1.2v1.1c-.2-.1-.5-.2-.8-.2-.3-.1-.5-.1-.7-.1zm-.3 3.6c0 1.1-.8 1.6-1.8 1.6-1 0-1.5-.6-1.5-1.4 0-1.1.8-1.6 2-1.6.5 0 .9.1 1.2.2v1.2h.1z" fill="#000"/></svg>'},
-    {n:"PayPal", b:"#00457C", s:'<svg viewBox="0 0 24 24"><path d="M8.5 5.5h4c2 0 3.5 1 3.5 3 0 1.5-.8 2.8-2 3.3l-.2 1.2H16c1.5 0 2.5-1 2.5-2.5 0-1.5-.8-2.5-2-2.5h-.5l.5-2.5H13L11 18.5H8.5l1-5.5h2c1 0 1.8-.5 2-1.5L12.5 6h-2.5L9 11.5H6.5l2-6z" fill="#fff"/></svg>'},
-    {n:"Tinder", b:"#FF6B6B", s:'<svg viewBox="0 0 24 24"><path d="M12 21.5c-4.5 0-8-3.5-8-8 0-4.4 3.4-7.8 7.5-8 0 1.5 1 2.5 2.5 2.5 0-.8.2-1.5.5-2C17.5 7.5 20 10.5 20 13.5c0 4.5-3.5 8-8 8zm0-12.5c-1 0-1.5.5-2 1.5.5-.5 1-1 2-1zm-1.5 6c1 0 1.5-.5 2-1.5-.5.5-1 1-2 1z" fill="#fff"/></svg>'},
-    {n:"Weather", b:"#38bdf8", s:'<svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="4" fill="#fef08a"/><path d="M16 16.5a3.5 3.5 0 00-3-5h-.5a4.5 4.5 0 10-8.5 2h12z" fill="#fff"/></svg>'},
+    {n:"Amazon", b:"linear-gradient(180deg,#f5faff 0%,#c9e8fb 100%)", p:8, s:'<svg viewBox="0 0 24 24"><rect x="4.5" y="6.5" width="15" height="10.5" rx="1" fill="#d9a45f"/><rect x="10.7" y="6.5" width="2.6" height="10.5" fill="#3d76b5"/><path d="M6.5 12c2.4 1.7 8.6 1.7 11 0" fill="none" stroke="#7a5230" stroke-width="0.9" stroke-linecap="round" opacity="0.5"/><path d="M6 19.2c2.9 2.3 9.1 2.3 12 0" fill="none" stroke="#FF9900" stroke-width="1.9" stroke-linecap="round"/><path d="M16.5 18.2l1.8.7-.5 1.9" fill="none" stroke="#FF9900" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+    {n:"PayPal", b:"#00457C", s:'<svg viewBox="0 0 24 24"><text x="8" y="17" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="800" fill="#9FD8F5">P</text><text x="11.5" y="17" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="800" fill="#fff">P</text></svg>'},
+    {n:"InstaPay", b:"linear-gradient(135deg,#6C5CE7,#3B82F6)", s:'<svg viewBox="0 0 24 24"><rect x="3.3" y="6" width="17.4" height="12.5" rx="2.6" fill="#fff"/><rect x="3.3" y="9.3" width="17.4" height="2.8" fill="#3B82F6"/><path d="M14.6 12.6l-4 5.3h2.6l-.9 3.5 4.3-5.5h-2.6z" fill="#FFC93C"/></svg>'},
+    {n:"Weather", b:"#38bdf8", s:'<svg viewBox="0 0 24 24"><circle cx="9.5" cy="9.5" r="4.2" fill="#FED766"/><path d="M17 17.5H8a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17.9 12.3 3.6 3.6 0 0 1 17 17.5z" fill="#fff"/></svg>'},
     {n:"Calendar", b:"#fff", s:'<svg viewBox="0 0 24 24"><path d="M4 8h16v12a4 4 0 01-4 4H8a4 4 0 01-4-4V8z" fill="#e2e8f0"/><path d="M4 8V6a4 4 0 014-4h8a4 4 0 014 4v2H4z" fill="#ef4444"/><text x="12" y="18" font-family="Arial" font-size="9" font-weight="bold" fill="#1e293b" text-anchor="middle">31</text></svg>'},
-    {n:"Steam", b:"#171A21", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12c0 2.2.7 4.2 2 5.8l3.6-5.2c0-.1 0-.1-.1-.2-1-1-1-2.6 0-3.6 1-1 2.6-1 3.6 0s1 2.6 0 3.6c-.3.3-.6.4-1 .5l2.4 3.5c.3 0 .5.1.8.1 3 0 5.5-2.5 5.5-5.5S16.4 5.5 13.4 5.5C10.7 5.5 8.4 7.5 8.1 10.1l-2.6 3.8C3.3 12.3 2.5 10.2 2.5 8c0-5.2 4.3-9.5 9.5-9.5s9.5 4.3 9.5 9.5-4.3 9.5-9.5 9.5c-.8 0-1.6-.1-2.4-.3l4.2-6.1c.6-.2 1.1-.6 1.4-1.2l4.8 1.4c.1-.4.2-.8.2-1.3 0-2.8-2.2-5-5-5s-5 2.2-5 5c0 .3 0 .7.1 1l-2.4 3.5z" fill="#fff"/></svg>'},
+    {n:"Steam", b:"#171A21", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#171A21"/><circle cx="15" cy="8.3" r="3" fill="none" stroke="#66C0F4" stroke-width="1.5"/><circle cx="15" cy="8.3" r="1.1" fill="#66C0F4"/><circle cx="9" cy="15.2" r="2.4" fill="none" stroke="#66C0F4" stroke-width="1.5"/><circle cx="9" cy="15.2" r="0.9" fill="#66C0F4"/><path d="M10.5 13.6l3.3-3.8" stroke="#66C0F4" stroke-width="1.5" stroke-linecap="round"/></svg>'},
     {n:"Cash App", b:"#00D632", s:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm3.5 13h-2v1.5h-3V15H9.5C8.7 15 8 14.3 8 13.5v-2c0-.8.7-1.5 1.5-1.5h4v-1h-4V7h2V5.5h3V7h1.5c.8 0 1.5.7 1.5 1.5v2c0 .8-.7 1.5-1.5 1.5h-4v1h4v2z" fill="#fff"/></svg>'},
     {n:"Contacts", b:"#3b82f6", s:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M12 14c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z" fill="#fff"/></svg>'},
     {n:"Files", b:"#eab308", s:'<svg viewBox="0 0 24 24"><path d="M4 4h6l2 2h8c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#fff"/></svg>'},
@@ -2205,7 +2300,12 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
         var lockSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>';
         return '<div class="hs-app-wrapper is-lock"><div class="hs-app-icon" style="background:#1e293b; padding:12px;">'+lockSvg+'</div><div class="hs-app-label">Lock</div></div>';
     }
-    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+app.b+';">'+app.s+'</div><div class="hs-app-label">'+app.n+'</div></div>';
+    var customIcon = magic.customAppIcons && magic.customAppIcons[app.n];
+    if(customIcon){
+      return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="background:#111; padding:0;"><img src="'+customIcon+'" style="width:100%; height:100%; object-fit:cover;"></div><div class="hs-app-label">'+app.n+'</div></div>';
+    }
+    var padVal = (app.p !== undefined) ? app.p : 10;
+    return '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:'+padVal+'px; background:'+app.b+';">'+app.s+'</div><div class="hs-app-label">'+app.n+'</div></div>';
   }
 
   function updateClocksForHs(){
@@ -2303,6 +2403,12 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       hsPagesWrapper.appendChild(pageEl);
     }
     
+    // Page dots
+    hsPageDots.innerHTML = '';
+    for(var dotI=0; dotI<hsTotalPages; dotI++){
+      hsPageDots.innerHTML += '<div class="hs-dot'+(dotI===0?' active':'')+'"></div>';
+    }
+
     // Core Dock rendering
     hsDock.innerHTML = '';
     for(var dIdx=0; dIdx<4; dIdx++){
@@ -2310,7 +2416,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
          hsDock.innerHTML += getAppHTML(null, false, true); // Lock Icon
       } else {
          var mappedApp = coreApps[dIdx === 0 ? 0 : (dIdx === 1 ? 1 : 2)];
-         hsDock.innerHTML += '<div class="hs-app-wrapper dummy-app"><div class="hs-app-icon" style="padding:10px; background:'+mappedApp.b+';">'+mappedApp.svg+'</div><div class="hs-app-label">'+mappedApp.n+'</div></div>';
+         hsDock.innerHTML += getAppHTML({n:mappedApp.n, b:mappedApp.b, s:mappedApp.svg, p:10}, false, false);
       }
     }
     
@@ -2339,12 +2445,22 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     hsEventsBound = true;
 
     var startX = 0, startY = 0, isDragging = false, touchZoneVal = 0;
-    
+    var directionLock = null, pageWidth = 0, liveDeltaX = 0;
+
+    function setActiveDot(idx){
+      var dots = hsPageDots.children;
+      for(var di=0; di<dots.length; di++){ dots[di].classList.toggle('active', di === idx); }
+    }
+
     hsPagesWrapper.addEventListener('touchstart', function(e){
       if(hsIsAnimating) return; 
       var t = e.touches[0];
       startX = t.clientX; startY = t.clientY;
       isDragging = true;
+      directionLock = null;
+      liveDeltaX = 0;
+      pageWidth = window.innerWidth;
+      hsPagesWrapper.style.transition = 'none';
       
       var activeGrid = hsPagesWrapper.children[hsCurrentPage].querySelector('.hs-grid');
       var rect = activeGrid.getBoundingClientRect();
@@ -2361,38 +2477,91 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       }
     }, {passive:true});
 
+    hsPagesWrapper.addEventListener('touchmove', function(e){
+      if(!isDragging || hsIsAnimating) return;
+      var t = e.touches[0];
+      var dx = t.clientX - startX;
+      var dy = t.clientY - startY;
+
+      if(directionLock === null){
+        if(Math.abs(dx) > 6 || Math.abs(dy) > 6){
+          directionLock = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        } else {
+          return;
+        }
+      }
+      if(directionLock !== 'x') return;
+
+      var canForward = hsCurrentPage < hsTotalPages - 1;
+      var resisted = dx;
+      if(dx < 0 && !canForward){
+        resisted = dx * 0.28; // rubber-band: no further pages
+      } else if(dx > 0 && hsCurrentPage === 0){
+        resisted = dx * 0.28; // rubber-band: already at the start
+      } else if(dx > 0){
+        resisted = dx * 0.55; // swiping right always resets, so ease it
+      }
+      liveDeltaX = resisted;
+
+      var base = -(hsCurrentPage * pageWidth);
+      hsPagesWrapper.style.transform = 'translateX(' + (base + resisted) + 'px)';
+
+      // live-preview the digit that would be captured on this page
+      if(resisted < 0 && canForward){
+        var progress = Math.min(Math.abs(resisted) / pageWidth, 1);
+        if(progress > 0.15){
+          document.getElementById('hsTopTime').textContent = formatPeekTime(hsPinDigits + touchZoneVal);
+        } else {
+          updateClocksForHs();
+        }
+      }
+    }, {passive:true});
+
     hsPagesWrapper.addEventListener('touchend', function(e){
       if(!isDragging) return;
       isDragging = false;
-      var deltaX = e.changedTouches[0].clientX - startX;
+      if(directionLock !== 'x'){ return; }
+
+      var rawDelta = e.changedTouches[0].clientX - startX;
       
-      if(deltaX < -40 && hsCurrentPage < hsTotalPages - 1){
+      if(rawDelta < -40 && hsCurrentPage < hsTotalPages - 1){
         // Valid Swipe Left
         hsPinDigits += touchZoneVal;
         hsCurrentPage++;
         hsIsAnimating = true;
-        hsPagesWrapper.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
-        hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * 100) + 'vw)';
+        hsPagesWrapper.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
+        hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * pageWidth) + 'px)';
+        setActiveDot(hsCurrentPage);
         
         if(hsCurrentPage === hsTotalPages - 1){
            document.getElementById('hsTopTime').textContent = formatPeekTime(hsPinDigits);
         }
 
-        setTimeout(function(){ hsIsAnimating = false; }, 360);
+        setTimeout(function(){ hsIsAnimating = false; }, 380);
       } 
-      else if (deltaX > 40 && hsCurrentPage > 0) {
-        // Valid Swipe Right
+      else if (rawDelta > 40 && hsCurrentPage > 0) {
+        // Valid Swipe Right (always resets to the first page)
         hsCurrentPage = 0;
         hsPinDigits = '';
         hsIsAnimating = true;
-        hsPagesWrapper.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+        hsPagesWrapper.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
         hsPagesWrapper.style.transform = 'translateX(0)';
+        setActiveDot(0);
         updateClocksForHs(); 
-        setTimeout(function(){ hsIsAnimating = false; }, 360);
+        setTimeout(function(){ hsIsAnimating = false; }, 380);
       } 
+      else {
+        // Didn't cross the threshold: spring back to the current page
+        hsIsAnimating = true;
+        hsPagesWrapper.style.transition = 'transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * pageWidth) + 'px)';
+        updateClocksForHs();
+        setTimeout(function(){ hsIsAnimating = false; }, 450);
+      }
     }, {passive:true});
     
     hsPagesWrapper.addEventListener('click', function(e){
+      if(directionLock === 'x') return; // was a swipe, not a tap
       if(e.target.closest('.is-notes')){
         e.stopPropagation();
         executeHsPin();
