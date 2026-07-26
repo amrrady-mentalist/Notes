@@ -55,6 +55,7 @@ body.light .glass::before{
 }
 body.light #drawCanvas{box-shadow:0 10px 40px rgba(0,0,0,0.15);}
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html{--vvh:100%; --vvtop:0px; --kbh:0px;}
 html,body{height:100%; background:#000;}
 body{
   margin:0;
@@ -136,8 +137,10 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 .card{
   break-inside:avoid; margin-bottom:12px; border-radius:var(--radius-md);
   padding:14px; cursor:pointer; transition:transform .15s ease;
+  animation:cardIn .28s cubic-bezier(.22,.72,.2,1) backwards;
 }
 .card:active{transform:scale(0.97);}
+@keyframes cardIn{from{opacity:0; transform:translateY(10px) scale(0.97);} to{opacity:1; transform:translateY(0) scale(1);}}
 .card .tag-dot{width:9px; height:9px; border-radius:50%; display:inline-block; margin-bottom:8px;}
 .card .thumb{width:100%; border-radius:12px; margin-bottom:8px; display:block; background:#fff;}
 .card h3{font-family:'Manrope'; font-size:15px; font-weight:700; margin:0 0 6px; line-height:1.3;}
@@ -164,8 +167,9 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 .empty-state p{font-size:13px; margin:0; max-width:220px;}
 
 .dock-wrap{
-  position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px) + var(--kbh,0px));
   z-index:20; display:flex; flex-direction:column; align-items:center; gap:14px;
+  transition:bottom .18s ease;
 }
 .fab{
   width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -180,13 +184,15 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
 .fab svg{width:24px; height:24px;}
 
 .toolbar-pill{
-  position:fixed; left:18px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:20;
+  position:fixed; left:18px; bottom:calc(24px + env(safe-area-inset-bottom,0px) + var(--kbh,0px)); z-index:20;
   border-radius:100px; padding:10px 16px; display:flex; align-items:center; gap:8px;
   font-size:13px; font-weight:600; color:var(--text-secondary); cursor:pointer;
+  transition:bottom .18s ease;
 }
 
 .editor{
-  position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+  position:fixed; left:0; right:0; top:var(--vvtop,0px); height:var(--vvh,100%);
+  z-index:50; display:flex; flex-direction:column;
   background:var(--bg-void);
   transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.72,0,1);
 }
@@ -212,12 +218,13 @@ main{flex:1; overflow-y:auto; overflow-x:hidden; padding:6px 14px calc(140px + e
   color:var(--text-primary); font-size:16px; line-height:1.6; font-family:'Inter';
 }
 .content-editable ul.checklist{list-style:none; padding:0; margin:6px 0;}
-.content-editable ul.checklist li{display:flex; align-items:flex-start; gap:8px; margin-bottom:6px; cursor:pointer;}
+.content-editable ul.checklist li{display:flex; align-items:flex-start; gap:8px; margin-bottom:6px; cursor:pointer; transition:opacity .22s ease;}
 .content-editable ul.checklist li .cbox{
   width:18px; height:18px; border-radius:6px; border:1.5px solid var(--text-tertiary); flex:0 0 auto; margin-top:2px;
+  transition:background .18s ease, border-color .18s ease, transform .22s cubic-bezier(.34,1.56,.64,1);
 }
 .content-editable ul.checklist li.done{opacity:0.5; text-decoration:line-through;}
-.content-editable ul.checklist li.done .cbox{background:linear-gradient(135deg,var(--accent-a),var(--accent-b)); border-color:transparent;}
+.content-editable ul.checklist li.done .cbox{background:linear-gradient(135deg,var(--accent-a),var(--accent-b)); border-color:transparent; transform:scale(1.08);}
 .content-editable ol.force-list{margin:6px 0 6px 22px; padding:0;}
 .content-editable ol.force-list li{margin-bottom:6px; line-height:1.5;}
 .drawing-thumb-wrap{margin-bottom:14px; border-radius:16px; overflow:hidden; cursor:pointer; position:relative;}
@@ -273,7 +280,8 @@ body.light .popover{
 .popover-scrim.open{pointer-events:auto;}
 
 .draw-overlay{
-  position:fixed; inset:0; z-index:90; display:flex; flex-direction:column;
+  position:fixed; left:0; right:0; top:var(--vvtop,0px); height:var(--vvh,100%);
+  z-index:90; display:flex; flex-direction:column;
   background:var(--bg-void); transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1);
 }
 .draw-overlay.open{transform:translateY(0);}
@@ -309,7 +317,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 ::selection{background:rgba(139,124,255,0.4);}
 
 .magic-panel{
-  position:fixed; inset:0; z-index:80; display:flex; flex-direction:column;
+  position:fixed; left:0; right:0; top:var(--vvtop,0px); height:var(--vvh,100%);
+  z-index:80; display:flex; flex-direction:column;
   background:var(--bg-void); transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.72,0,1);
 }
 .magic-panel.open{transform:translateY(0);}
@@ -326,7 +335,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   flex:0 0 auto;
 }
 .magic-empty{color:var(--text-tertiary); font-size:14px; text-align:center; padding:60px 20px;}
-.magic-fab{position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:81;}
+.magic-fab{position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px) + var(--kbh,0px)); z-index:81; transition:bottom .18s ease;}
 
 .lockbg-section{padding:0 20px 18px; flex:0 0 auto;}
 .lockbg-row{display:flex; align-items:center; gap:14px;}
@@ -455,12 +464,16 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 .pin-dot{
   width:13px; height:13px; border-radius:50%;
   background:rgba(255,255,255,0.28);
-  transition:background .15s ease, box-shadow .15s ease;
+  transition:background .15s ease, box-shadow .15s ease, transform .28s cubic-bezier(.34,1.56,.64,1);
 }
 .pin-dot.filled{
   background:rgba(255,255,255,0.98);
-  box-shadow:0 0 10px 2px rgba(255,255,255,0.75), 0 0 22px 6px rgba(255,255,255,0.35);
 }
+.pin-dot.current{
+  box-shadow:0 0 7px 1.5px rgba(255,255,255,0.55), 0 0 14px 4px rgba(255,255,255,0.2);
+  animation:pinDotPop .28s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pinDotPop{0%{transform:scale(0.4);} 60%{transform:scale(1.25);} 100%{transform:scale(1);}}
 .pin-keypad{
   position:relative;
   display:grid; grid-template-columns:repeat(3, 68px); gap:18px 26px; justify-content:center;
@@ -594,6 +607,49 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 </style>
 </head>
 <body>
+<script>
+  /* Keep fixed toolbars glued to the visible area (above the on-screen keyboard).
+     We can't trust the layout viewport to shrink when the keyboard opens, so we
+     track window.visualViewport directly and expose it as CSS vars.
+
+     Note: we calibrate the "no keyboard" baseline from the largest
+     visualViewport height we've actually observed, rather than
+     window.innerHeight. Browser chrome (e.g. Chrome's address bar) can make
+     innerHeight and visualViewport.height differ even with no keyboard open,
+     which was previously being misread as a keyboard and pushed the FAB /
+     sort-pill up so far they peeked out from under the editor. */
+  (function(){
+    var root = document.documentElement;
+    var raf = null;
+    var maxVVH = 0;
+    var KB_THRESHOLD = 120; // real keyboards are always well over this; chrome UI isn't
+    function apply(){
+      raf = null;
+      var vv = window.visualViewport;
+      if(vv){
+        if(vv.height > maxVVH) maxVVH = vv.height;
+        var kbh = Math.max(0, maxVVH - vv.height);
+        if(kbh < KB_THRESHOLD) kbh = 0;
+        root.style.setProperty('--vvh', (kbh > 0 ? vv.height : maxVVH) + 'px');
+        root.style.setProperty('--vvtop', vv.offsetTop + 'px');
+        root.style.setProperty('--kbh', kbh + 'px');
+      } else {
+        root.style.setProperty('--vvh', '100%');
+        root.style.setProperty('--vvtop', '0px');
+        root.style.setProperty('--kbh', '0px');
+      }
+    }
+    function schedule(){ if(raf) return; raf = requestAnimationFrame(apply); }
+    function recalibrate(){ maxVVH = 0; schedule(); }
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', schedule);
+      window.visualViewport.addEventListener('scroll', schedule);
+    }
+    window.addEventListener('resize', schedule);
+    window.addEventListener('orientationchange', recalibrate);
+    apply();
+  })();
+</script>
 
 <div id="app">
   <header>
@@ -883,16 +939,22 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 
   /* ---------------- persistence (IndexedDB) ---------------- */
   var DB_NAME = "LiquidNotesDB";
+  // Open the DB connection once and reuse it for every get/set instead of
+  // re-opening (and re-checking versions) on every single call — that
+  // round-trip was the main contributor to a sluggish cold start.
+  var dbPromise = null;
   function openDB(){
-    return new Promise(function(resolve, reject){
+    if(dbPromise) return dbPromise;
+    dbPromise = new Promise(function(resolve, reject){
       var req = indexedDB.open(DB_NAME, 1);
       req.onupgradeneeded = function(e){
         var db = e.target.result;
         if(!db.objectStoreNames.contains('store')) db.createObjectStore('store');
       };
       req.onsuccess = function(e){ resolve(e.target.result); };
-      req.onerror = function(e){ reject(e); };
+      req.onerror = function(e){ dbPromise = null; reject(e); };
     });
+    return dbPromise;
   }
   function dbGet(key){
     return openDB().then(function(db){
@@ -1091,9 +1153,12 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     var pageTitles = {all:'Notes', pinned:'Pinned', checklists:'Checklists', drawings:'Drawings', archived:'Archived'};
     document.getElementById('pageTitle').textContent = pageTitles[state.filter] || 'Notes';
 
-    list.forEach(function(n){
+    list.forEach(function(n, idx){
       var card = document.createElement('div');
       card.className = 'card glass';
+      // Stagger just the first screenful so the grid feels alive without
+      // making a long list feel slow to settle.
+      card.style.animationDelay = (Math.min(idx, 10) * 22) + 'ms';
       var dotColor = colorMap[n.color || 'none'];
       var html = '';
       if(dotColor) html += '<span class="tag-dot" style="background:'+dotColor+'"></span>';
@@ -2188,9 +2253,13 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   function renderPinDots(){
     pinDots.innerHTML = '';
     var total = 4;
+    var lastIdx = pinDigits.length - 1;
     for(var i=0;i<total;i++){
       var dot = document.createElement('div');
-      dot.className = 'pin-dot' + (i < pinDigits.length ? ' filled' : '');
+      var cls = 'pin-dot';
+      if(i < pinDigits.length) cls += ' filled';
+      if(i === lastIdx) cls += ' current';
+      dot.className = cls;
       pinDots.appendChild(dot);
     }
   }
@@ -2503,7 +2572,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
       } else if(dx > 0 && hsCurrentPage === 0){
         resisted = dx * 0.28; // rubber-band: already at the start
       } else if(dx > 0){
-        resisted = dx * 0.55; // swiping right always resets, so ease it
+        resisted = dx * 0.55; // swiping right steps back a page, so ease it
       }
       liveDeltaX = resisted;
 
@@ -2544,13 +2613,15 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
         setTimeout(function(){ hsIsAnimating = false; }, 380);
       } 
       else if (rawDelta > 40 && hsCurrentPage > 0) {
-        // Valid Swipe Right (always resets to the first page)
-        hsCurrentPage = 0;
-        hsPinDigits = '';
+        // Valid Swipe Right: step back ONE page and undo only the last
+        // digit that was swiped in, so a mis-swipe can be corrected
+        // without having to redo the whole sequence from page 1.
+        hsCurrentPage--;
+        hsPinDigits = hsPinDigits.slice(0, -1);
         hsIsAnimating = true;
         hsPagesWrapper.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
-        hsPagesWrapper.style.transform = 'translateX(0)';
-        setActiveDot(0);
+        hsPagesWrapper.style.transform = 'translateX(-' + (hsCurrentPage * pageWidth) + 'px)';
+        setActiveDot(hsCurrentPage);
         updateClocksForHs(); 
         setTimeout(function(){ hsIsAnimating = false; }, 380);
       } 
@@ -2674,13 +2745,18 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 
   /* ---------------- app init ---------------- */
   async function initApp() {
-    var savedN = await dbGet("liquidnotes_v1");
+    // Fire all three reads at once on the same DB connection instead of
+    // awaiting them sequentially — this alone removes two full IndexedDB
+    // round-trips from the critical path on every cold start.
+    var results = await Promise.all([
+      dbGet("liquidnotes_v1"),
+      dbGet("liquidnotes_magic_v1"),
+      dbGet("liquidnotes_theme")
+    ]);
+    var savedN = results[0], savedM = results[1], savedT = results[2];
+
     notes = savedN || seedNotes();
-
-    var savedM = await dbGet("liquidnotes_magic_v1");
     magic = savedM || {effects:[], activeEffectId:null, lockMode:'classic'};
-
-    var savedT = await dbGet("liquidnotes_theme");
     applyTheme(savedT || 'dark');
 
     var activeFx = magic.effects.find(function(x){ return x.id === magic.activeEffectId; });
