@@ -316,6 +316,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 .magic-panel h1{font-size:20px;}
 .magic-hint{padding:0 20px 14px; color:var(--text-tertiary); font-size:13px; line-height:1.5;}
 .magic-body{flex:1; overflow-y:auto; padding:6px 18px 100px;}
+.magic-scroll{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+.magic-scroll .magic-body{flex:none; overflow:visible; padding:6px 18px 120px;}
 .magic-effect-card{margin-bottom:12px;}
 .magic-effect-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
 .active-pill{
@@ -340,8 +342,8 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 #lockBgRemoveBtn.show, #hsBgRemoveBtn.show, #hsIconRemoveBtn.show {display:inline-block;}
 
 .app-icon-list{
-  display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto;
-  padding-right:2px; margin-top:6px;
+  display:flex; flex-direction:column; gap:8px;
+  margin-top:6px;
 }
 .app-icon-row{
   display:flex; align-items:center; gap:12px; padding:8px; border-radius:16px;
@@ -494,12 +496,11 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 }
 
 /* Status bar sits flush at the true top:0 edge, like the real system status
-   bar does. padding-top (not top) absorbs a genuine display-cutout inset, so
-   on ordinary devices (inset = 0) the bar itself never gets pushed down -
-   only its content would nudge if a cutout is actually present. */
+   bar does. A small fixed offset keeps the clock/icons from touching the
+   very first pixel row, without the large gap safe-area-inset-top used to add. */
 .hs-top-bar{
   position:absolute; top:0; left:16px; right:16px; height:28px;
-  padding-top:env(safe-area-inset-top, 0px); box-sizing:content-box;
+  padding-top:6px; box-sizing:content-box;
   display:flex; justify-content:space-between; align-items:center; z-index:5;
   color:#fff; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.5);
 }
@@ -509,7 +510,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
 .hs-top-bar .hs-icons{display:flex; gap:6px; align-items:center;}
 
 #hsPagesWrapper{
-  position:absolute; top:calc(env(safe-area-inset-top,0px) + 30px); left:0; right:0; bottom:110px; z-index:10;
+  position:absolute; top:44px; left:0; right:0; bottom:110px; z-index:10;
   display:flex; transition:transform 0.35s cubic-bezier(0.25, 1, 0.5, 1); will-change:transform;
 }
 .hs-page{
@@ -735,6 +736,7 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
   </div>
   <p class="magic-hint">Each effect's body can use <b>$$$$</b> as a placeholder — it's swapped for the word tied to whatever code you enter on the lock screen.</p>
   
+  <div class="magic-scroll">
   <div class="lockbg-section">
     <div class="outs-label">Lock Method</div>
     <div class="lock-mode-toggle">
@@ -783,7 +785,9 @@ input[type=range]{flex:1; accent-color:var(--accent-b);}
     </div>
   </div>
   
+  <div class="outs-label" style="padding:0 20px; margin-top:4px;">Effects</div>
   <div class="magic-body" id="effectsList"></div>
+  </div>
   <div class="fab main magic-fab" id="newEffectBtn">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0a0a12" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
   </div>
